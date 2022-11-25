@@ -361,6 +361,7 @@ s7_error_code_e s7_analysis_read_byte(byte_array_info response, byte_array_info*
 	int i = 0, j = 0;
 	byte buffer[1024] = { 0 };
 	int buffer_length = 0;
+	int temp_index = 0;
 	if (response.length >= 21)
 	{
 		for (i = 21; i < response.length - 1; i++)
@@ -380,7 +381,8 @@ s7_error_code_e s7_analysis_read_byte(byte_array_info response, byte_array_info*
 				{
 					for (j = 0; j < count / 3; j++)
 					{
-						memcpy(buffer + buffer_length, (void*)response.data[i + 5 + 3 * j], 2);
+						temp_index = i + 5 + 3 * j;
+						memcpy(buffer + buffer_length, (void*)(response.data + temp_index), 2);
 						buffer_length += 2;
 					}
 				}
@@ -388,7 +390,8 @@ s7_error_code_e s7_analysis_read_byte(byte_array_info response, byte_array_info*
 				{
 					for (j = 0; j < count / 5; j++)
 					{
-						memcpy(buffer + buffer_length, (void*)response.data[i + 7 + 5 * j], 2);
+						temp_index = i + 7 + 5 * j;
+						memcpy(buffer + buffer_length, (void*)(response.data + temp_index), 2);
 						buffer_length += 2;
 					}
 				}
