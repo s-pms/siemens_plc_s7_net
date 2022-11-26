@@ -6,45 +6,45 @@
 
 #define BUFFER_SIZE 1024
 
-// ´ÓµØÖ·¹¹ÔìºËĞÄ±¨ÎÄ
+// ä»åœ°å€æ„é€ æ ¸å¿ƒæŠ¥æ–‡
 byte_array_info build_read_byte_command(siemens_s7_address_data address)
 {
 	const ushort command_len = 19 + 12;	// head + block
 	byte* command = (byte*)malloc(command_len);
 
-	command[0] = 0x03;												// ±¨ÎÄÍ· -> Head
+	command[0] = 0x03;												// æŠ¥æ–‡å¤´ -> Head
 	command[1] = 0x00;
-	command[2] = (byte)(command_len / 256);							// ³¤¶È -> Length
+	command[2] = (byte)(command_len / 256);							// é•¿åº¦ -> Length
 	command[3] = (byte)(command_len % 256);
-	command[4] = 0x02;												// ¹Ì¶¨ -> Fixed
+	command[4] = 0x02;												// å›ºå®š -> Fixed
 	command[5] = 0xF0;
 	command[6] = 0x80;
-	command[7] = 0x32;                                              // Ğ­Òé±êÊ¶ -> Protocol identification
-	command[8] = 0x01;                                              // ÃüÁî£º·¢ -> Command: Send
+	command[7] = 0x32;                                              // åè®®æ ‡è¯† -> Protocol identification
+	command[8] = 0x01;                                              // å‘½ä»¤ï¼šå‘ -> Command: Send
 	command[9] = 0x00;                                              // redundancy identification (reserved): 0x0000;
 	command[10] = 0x00;
-	command[11] = 0x00;                                             // protocol data unit reference; it¡¯s increased by request event;
+	command[11] = 0x00;                                             // protocol data unit reference; itâ€™s increased by request event;
 	command[12] = 0x01;
-	command[13] = (byte)((command_len - 17) / 256);					// ²ÎÊıÃüÁîÊı¾İ×Ü³¤¶È -> Parameter command Data total length
+	command[13] = (byte)((command_len - 17) / 256);					// å‚æ•°å‘½ä»¤æ•°æ®æ€»é•¿åº¦ -> Parameter command Data total length
 	command[14] = (byte)((command_len - 17) % 256);
-	command[15] = 0x00;                                              // ¶ÁÈ¡ÄÚ²¿Êı¾İÊ±Îª00£¬¶ÁÈ¡CPUĞÍºÅÎªDataÊı¾İ³¤¶È -> Read internal data is 00, read CPU model is data length
+	command[15] = 0x00;                                              // è¯»å–å†…éƒ¨æ•°æ®æ—¶ä¸º00ï¼Œè¯»å–CPUå‹å·ä¸ºDataæ•°æ®é•¿åº¦ -> Read internal data is 00, read CPU model is data length
 	command[16] = 0x00;
 	// =====================================================================================
-	command[17] = 0x04;                                              // ¶ÁĞ´Ö¸Áî£¬04¶Á£¬05Ğ´ -> Read-write instruction, 04 read, 05 Write
-	command[18] = 0x01;												 // ¶ÁÈ¡Êı¾İ¿é¸öÊı -> Number of data blocks read
+	command[17] = 0x04;                                              // è¯»å†™æŒ‡ä»¤ï¼Œ04è¯»ï¼Œ05å†™ -> Read-write instruction, 04 read, 05 Write
+	command[18] = 0x01;												 // è¯»å–æ•°æ®å—ä¸ªæ•° -> Number of data blocks read
 
 	//===========================================================================================
-	// Ö¸¶¨ÓĞĞ§ÖµÀàĞÍ -> Specify a valid value type
+	// æŒ‡å®šæœ‰æ•ˆå€¼ç±»å‹ -> Specify a valid value type
 	command[19] = 0x12;
-	// ½ÓÏÂÀ´±¾´ÎµØÖ··ÃÎÊ³¤¶È -> The next time the address access length
+	// æ¥ä¸‹æ¥æœ¬æ¬¡åœ°å€è®¿é—®é•¿åº¦ -> The next time the address access length
 	command[20] = 0x0A;
-	// Óï·¨±ê¼Ç£¬ANY -> Syntax tag, any
+	// è¯­æ³•æ ‡è®°ï¼ŒANY -> Syntax tag, any
 	command[21] = 0x10;
-	// °´×ÖÎªµ¥Î» -> by word
+	// æŒ‰å­—ä¸ºå•ä½ -> by word
 	if (address.data_code == 0x1E || address.data_code == 0x1F)
 	{
 		command[22] = address.data_code;
-		// ·ÃÎÊÊı¾İµÄ¸öÊı -> Number of Access data
+		// è®¿é—®æ•°æ®çš„ä¸ªæ•° -> Number of Access data
 		command[23] = (byte)(address.length / 2 / 256);
 		command[24] = (byte)(address.length / 2 % 256);
 	}
@@ -52,7 +52,7 @@ byte_array_info build_read_byte_command(siemens_s7_address_data address)
 	{
 		if (address.data_code == 0x06 || address.data_code == 0x07)
 		{
-			// ·ÃÎÊÊı¾İµÄ¸öÊı -> Number of Access data
+			// è®¿é—®æ•°æ®çš„ä¸ªæ•° -> Number of Access data
 			command[22] = 0x04;
 			command[23] = (byte)(address.length / 2 / 256);
 			command[24] = (byte)(address.length / 2 % 256);
@@ -60,17 +60,17 @@ byte_array_info build_read_byte_command(siemens_s7_address_data address)
 		else
 		{
 			command[22] = 0x02;
-			// ·ÃÎÊÊı¾İµÄ¸öÊı -> Number of Access data
+			// è®¿é—®æ•°æ®çš„ä¸ªæ•° -> Number of Access data
 			command[23] = (byte)(address.length / 256);
 			command[24] = (byte)(address.length % 256);
 		}
 	}
-	// DB¿é±àºÅ£¬Èç¹û·ÃÎÊµÄÊÇDB¿éµÄ»° -> DB block number, if you are accessing a DB block
+	// DBå—ç¼–å·ï¼Œå¦‚æœè®¿é—®çš„æ˜¯DBå—çš„è¯ -> DB block number, if you are accessing a DB block
 	command[25] = (byte)(address.db_block / 256);
 	command[26] = (byte)(address.db_block % 256);
-	// ·ÃÎÊÊı¾İÀàĞÍ -> Accessing data types
+	// è®¿é—®æ•°æ®ç±»å‹ -> Accessing data types
 	command[27] = address.data_code;
-	// Æ«ÒÆÎ»ÖÃ -> Offset position
+	// åç§»ä½ç½® -> Offset position
 	command[28] = (byte)(address.address_start / 256 / 256 % 256);
 	command[29] = (byte)(address.address_start / 256 % 256);
 	command[30] = (byte)(address.address_start % 256);
@@ -88,49 +88,49 @@ byte_array_info build_read_bit_command(siemens_s7_address_data address)
 
 	command[0] = 0x03;
 	command[1] = 0x00;
-	// ³¤¶È -> Length
+	// é•¿åº¦ -> Length
 	command[2] = (byte)(command_len / 256);
 	command[3] = (byte)(command_len % 256);
-	// ¹Ì¶¨ -> Fixed
+	// å›ºå®š -> Fixed
 	command[4] = 0x02;
 	command[5] = 0xF0;
 	command[6] = 0x80;
 	command[7] = 0x32;
-	// ÃüÁî£º·¢ -> command to send
+	// å‘½ä»¤ï¼šå‘ -> command to send
 	command[8] = 0x01;
-	// ±êÊ¶ĞòÁĞºÅ
+	// æ ‡è¯†åºåˆ—å·
 	command[9] = 0x00;
 	command[10] = 0x00;
 	command[11] = 0x00;
 	command[12] = 0x01;
-	// ÃüÁîÊı¾İ×Ü³¤¶È -> Identification serial Number
+	// å‘½ä»¤æ•°æ®æ€»é•¿åº¦ -> Identification serial Number
 	command[13] = (byte)((command_len - 17) / 256);
 	command[14] = (byte)((command_len - 17) % 256);
 
 	command[15] = 0x00;
 	command[16] = 0x00;
 
-	// ÃüÁîÆğÊ¼·û -> Command start character
+	// å‘½ä»¤èµ·å§‹ç¬¦ -> Command start character
 	command[17] = 0x04;
-	// ¶ÁÈ¡Êı¾İ¿é¸öÊı -> Number of data blocks read
+	// è¯»å–æ•°æ®å—ä¸ªæ•° -> Number of data blocks read
 	command[18] = 0x01;
 
 	//===========================================================================================
-	// ¶ÁÈ¡µØÖ·µÄÇ°×º -> Read the prefix of the address
+	// è¯»å–åœ°å€çš„å‰ç¼€ -> Read the prefix of the address
 	command[19] = 0x12;
 	command[20] = 0x0A;
 	command[21] = 0x10;
-	// ¶ÁÈ¡µÄÊı¾İÊ±Î» -> Data read-time bit
+	// è¯»å–çš„æ•°æ®æ—¶ä½ -> Data read-time bit
 	command[22] = 0x01;
-	// ·ÃÎÊÊı¾İµÄ¸öÊı -> Number of Access data
+	// è®¿é—®æ•°æ®çš„ä¸ªæ•° -> Number of Access data
 	command[23] = 0x00;
 	command[24] = 0x01;
-	// DB¿é±àºÅ£¬Èç¹û·ÃÎÊµÄÊÇDB¿éµÄ»° -> DB block number, if you are accessing a DB block
+	// DBå—ç¼–å·ï¼Œå¦‚æœè®¿é—®çš„æ˜¯DBå—çš„è¯ -> DB block number, if you are accessing a DB block
 	command[25] = (byte)(address.db_block / 256);
 	command[26] = (byte)(address.db_block % 256);
-	// ·ÃÎÊÊı¾İÀàĞÍ -> Types of reading data
+	// è®¿é—®æ•°æ®ç±»å‹ -> Types of reading data
 	command[27] = address.data_code;
-	// Æ«ÒÆÎ»ÖÃ -> Offset position
+	// åç§»ä½ç½® -> Offset position
 	command[28] = (byte)(address.address_start / 256 / 256 % 256);
 	command[29] = (byte)(address.address_start / 256 % 256);
 	command[30] = (byte)(address.address_start % 256);
@@ -151,64 +151,64 @@ byte_array_info build_write_byte_command(siemens_s7_address_data address, byte_a
 	byte* command = (byte*)malloc(command_len);
 	command[0] = 0x03;
 	command[1] = 0x00;
-	// ³¤¶È -> Length
+	// é•¿åº¦ -> Length
 	command[2] = (byte)((command_len) / 256);
 	command[3] = (byte)((command_len) % 256);
-	// ¹Ì¶¨ -> Fixed
+	// å›ºå®š -> Fixed
 	command[4] = 0x02;
 	command[5] = 0xF0;
 	command[6] = 0x80;
 	command[7] = 0x32;
-	// ÃüÁî ·¢ -> command to send
+	// å‘½ä»¤ å‘ -> command to send
 	command[8] = 0x01;
-	// ±êÊ¶ĞòÁĞºÅ -> Identification serial Number
+	// æ ‡è¯†åºåˆ—å· -> Identification serial Number
 	command[9] = 0x00;
 	command[10] = 0x00;
 	command[11] = 0x00;
 	command[12] = 0x01;
-	// ¹Ì¶¨ -> Fixed
+	// å›ºå®š -> Fixed
 	command[13] = 0x00;
 	command[14] = 0x0E;
-	// Ğ´Èë³¤¶È+4 -> Write Length +4
+	// å†™å…¥é•¿åº¦+4 -> Write Length +4
 	command[15] = (byte)((4 + val_len) / 256);
 	command[16] = (byte)((4 + val_len) % 256);
-	// ¶ÁĞ´Ö¸Áî -> Read and write instructions
+	// è¯»å†™æŒ‡ä»¤ -> Read and write instructions
 	command[17] = 0x05;
-	// Ğ´ÈëÊı¾İ¿é¸öÊı -> Number of data blocks written
+	// å†™å…¥æ•°æ®å—ä¸ªæ•° -> Number of data blocks written
 	command[18] = 0x01;
-	// ¹Ì¶¨£¬·µ»ØÊı¾İ³¤¶È -> Fixed, return data length
+	// å›ºå®šï¼Œè¿”å›æ•°æ®é•¿åº¦ -> Fixed, return data length
 	command[19] = 0x12;
 	command[20] = 0x0A;
 	command[21] = 0x10;
 	if (address.data_code == 0x06 || address.data_code == 0x07)
 	{
-		// Ğ´Èë·½Ê½£¬1ÊÇ°´Î»£¬2ÊÇ°´×Ö -> Write mode, 1 is bitwise, 2 is by byte, 4 is by word
+		// å†™å…¥æ–¹å¼ï¼Œ1æ˜¯æŒ‰ä½ï¼Œ2æ˜¯æŒ‰å­— -> Write mode, 1 is bitwise, 2 is by byte, 4 is by word
 		command[22] = 0x04;
-		// Ğ´ÈëÊı¾İµÄ¸öÊı -> Number of Write Data
+		// å†™å…¥æ•°æ®çš„ä¸ªæ•° -> Number of Write Data
 		command[23] = (byte)(val_len / 2 / 256);
 		command[24] = (byte)(val_len / 2 % 256);
 	}
 	else
 	{
-		// Ğ´Èë·½Ê½£¬1ÊÇ°´Î»£¬2ÊÇ°´×Ö -> Write mode, 1 is bitwise, 2 is by word
+		// å†™å…¥æ–¹å¼ï¼Œ1æ˜¯æŒ‰ä½ï¼Œ2æ˜¯æŒ‰å­— -> Write mode, 1 is bitwise, 2 is by word
 		command[22] = 0x02;
-		// Ğ´ÈëÊı¾İµÄ¸öÊı -> Number of Write Data
+		// å†™å…¥æ•°æ®çš„ä¸ªæ•° -> Number of Write Data
 		command[23] = (byte)(val_len / 256);
 		command[24] = (byte)(val_len % 256);
 	}
-	// DB¿é±àºÅ£¬Èç¹û·ÃÎÊµÄÊÇDB¿éµÄ»° -> DB block number, if you are accessing a DB block
+	// DBå—ç¼–å·ï¼Œå¦‚æœè®¿é—®çš„æ˜¯DBå—çš„è¯ -> DB block number, if you are accessing a DB block
 	command[25] = (byte)(address.db_block / 256);
 	command[26] = (byte)(address.db_block % 256);
-	// Ğ´ÈëÊı¾İµÄÀàĞÍ -> Types of writing data
+	// å†™å…¥æ•°æ®çš„ç±»å‹ -> Types of writing data
 	command[27] = address.data_code;
-	// Æ«ÒÆÎ»ÖÃ -> Offset position
+	// åç§»ä½ç½® -> Offset position
 	command[28] = (byte)(address.address_start / 256 / 256 % 256); ;
 	command[29] = (byte)(address.address_start / 256 % 256);
 	command[30] = (byte)(address.address_start % 256);
-	// °´×ÖĞ´Èë -> Write by Word
+	// æŒ‰å­—å†™å…¥ -> Write by Word
 	command[31] = 0x00;
 	command[32] = 0x04;
-	// °´Î»¼ÆËãµÄ³¤¶È -> The length of the bitwise calculation
+	// æŒ‰ä½è®¡ç®—çš„é•¿åº¦ -> The length of the bitwise calculation
 	command[33] = (byte)(val_len * 8 / 256);
 	command[34] = (byte)(val_len * 8 % 256);
 
@@ -235,49 +235,49 @@ byte_array_info build_write_bit_command(siemens_s7_address_data address, bool va
 
 	command[0] = 0x03;
 	command[1] = 0x00;
-	// ³¤¶È -> length
+	// é•¿åº¦ -> length
 	command[2] = (byte)((command_len) / 256);
 	command[3] = (byte)((command_len) % 256);
-	// ¹Ì¶¨ -> fixed
+	// å›ºå®š -> fixed
 	command[4] = 0x02;
 	command[5] = 0xF0;
 	command[6] = 0x80;
 	command[7] = 0x32;
-	// ÃüÁî ·¢ -> command to send
+	// å‘½ä»¤ å‘ -> command to send
 	command[8] = 0x01;
-	// ±êÊ¶ĞòÁĞºÅ -> Identification serial Number
+	// æ ‡è¯†åºåˆ—å· -> Identification serial Number
 	command[9] = 0x00;
 	command[10] = 0x00;
 	command[11] = 0x00;
 	command[12] = 0x01;
-	// ¹Ì¶¨ -> fixed
+	// å›ºå®š -> fixed
 	command[13] = 0x00;
 	command[14] = 0x0E;
-	// Ğ´Èë³¤¶È+4 -> Write Length +4
+	// å†™å…¥é•¿åº¦+4 -> Write Length +4
 	command[15] = (byte)((4 + buffer_len) / 256);
 	command[16] = (byte)((4 + buffer_len) % 256);
-	// ÃüÁîÆğÊ¼·û -> Command start character
+	// å‘½ä»¤èµ·å§‹ç¬¦ -> Command start character
 	command[17] = 0x05;
-	// Ğ´ÈëÊı¾İ¿é¸öÊı -> Number of data blocks written
+	// å†™å…¥æ•°æ®å—ä¸ªæ•° -> Number of data blocks written
 	command[18] = 0x01;
 	command[19] = 0x12;
 	command[20] = 0x0A;
 	command[21] = 0x10;
-	// Ğ´Èë·½Ê½£¬1ÊÇ°´Î»£¬2ÊÇ°´×Ö -> Write mode, 1 is bitwise, 2 is by word
+	// å†™å…¥æ–¹å¼ï¼Œ1æ˜¯æŒ‰ä½ï¼Œ2æ˜¯æŒ‰å­— -> Write mode, 1 is bitwise, 2 is by word
 	command[22] = 0x01;
-	// Ğ´ÈëÊı¾İµÄ¸öÊı -> Number of Write Data
+	// å†™å…¥æ•°æ®çš„ä¸ªæ•° -> Number of Write Data
 	command[23] = (byte)(buffer_len / 256);
 	command[24] = (byte)(buffer_len % 256);
-	// DB¿é±àºÅ£¬Èç¹û·ÃÎÊµÄÊÇDB¿éµÄ»° -> DB block number, if you are accessing a DB block
+	// DBå—ç¼–å·ï¼Œå¦‚æœè®¿é—®çš„æ˜¯DBå—çš„è¯ -> DB block number, if you are accessing a DB block
 	command[25] = (byte)(address.db_block / 256);
 	command[26] = (byte)(address.db_block % 256);
-	// Ğ´ÈëÊı¾İµÄÀàĞÍ -> Types of writing data
+	// å†™å…¥æ•°æ®çš„ç±»å‹ -> Types of writing data
 	command[27] = address.data_code;
-	// Æ«ÒÆÎ»ÖÃ -> Offset position
+	// åç§»ä½ç½® -> Offset position
 	command[28] = (byte)(address.address_start / 256 / 256);
 	command[29] = (byte)(address.address_start / 256);
 	command[30] = (byte)(address.address_start % 256);
-	// °´Î»Ğ´Èë -> Bitwise Write
+	// æŒ‰ä½å†™å…¥ -> Bitwise Write
 	if (address.data_code == 0x1C)
 	{
 		command[31] = 0x00;
@@ -288,7 +288,7 @@ byte_array_info build_write_bit_command(siemens_s7_address_data address, bool va
 		command[31] = 0x00;
 		command[32] = 0x03;
 	}
-	// °´Î»¼ÆËãµÄ³¤¶È -> The length of the bitwise calculation
+	// æŒ‰ä½è®¡ç®—çš„é•¿åº¦ -> The length of the bitwise calculation
 	command[33] = (byte)(buffer_len / 256);
 	command[34] = (byte)(buffer_len % 256);
 
@@ -301,7 +301,7 @@ byte_array_info build_write_bit_command(siemens_s7_address_data address, bool va
 }
 
 /// <summary>
-/// ¶ÁÈ¡BOOLÊ±£¬¸ù¾İS7Ğ­ÒéµÄ·µ»Ø±¨ÎÄ£¬ÕıÈ·ÌáÈ¡³öÊµ¼ÊµÄÊı¾İÄÚÈİ
+/// è¯»å–BOOLæ—¶ï¼Œæ ¹æ®S7åè®®çš„è¿”å›æŠ¥æ–‡ï¼Œæ­£ç¡®æå–å‡ºå®é™…çš„æ•°æ®å†…å®¹
 /// </summary>
 /// <param name="response"></param>
 /// <param name="ret"></param>

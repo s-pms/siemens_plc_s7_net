@@ -377,7 +377,7 @@ bool initialization_on_connect(int fd)
 	byte_array_info ret;
 	bool is_ok = false;
 
-	// µÚÒ»´ÎÎÕÊÖ -> First handshake
+	// ç¬¬ä¸€æ¬¡æ¡æ‰‹ -> First handshake
 	byte_array_info temp;
 	temp.data = g_plc_head1;
 	temp.length = sizeof(g_plc_head1);
@@ -387,20 +387,20 @@ bool initialization_on_connect(int fd)
 	else
 		if (NULL != ret.data) free(ret.data);
 
-	// µÚ¶ş´ÎÎÕÊÖ -> Second handshake
+	// ç¬¬äºŒæ¬¡æ¡æ‰‹ -> Second handshake
 	temp.data = g_plc_head2;
 	temp.length = sizeof(g_plc_head2);
 	is_ok = read_data_from_core_server(fd, temp, &ret);
 	if (!is_ok)
 		return false;
 
-	// µ÷Õûµ¥´Î½ÓÊÕµÄpdu³¤¶ÈĞÅÏ¢
+	// è°ƒæ•´å•æ¬¡æ¥æ”¶çš„pdué•¿åº¦ä¿¡æ¯
 	g_pdu_length = ntohs(bytes2ushort(ret.data + ret.length - 2)) - 28;
 	if (g_pdu_length < 200) g_pdu_length = 200;
 
 	if (NULL != ret.data) free(ret.data);
 
-	// ·µ»Ø³É¹¦µÄĞÅºÅ -> Return a successful signal
+	// è¿”å›æˆåŠŸçš„ä¿¡å· -> Return a successful signal
 	return true;
 }
 

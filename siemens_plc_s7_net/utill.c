@@ -193,7 +193,7 @@ void str_tolower(char* input)
 }
 
 /**
-* 字符串origin以字符串prefix开头，返回0；否则返回1；异常返回-1
+* 脳脰路没麓庐origin脪脭脳脰路没麓庐prefix驴陋脥路拢卢路碌禄脴0拢禄路帽脭貌路碌禄脴1拢禄脪矛鲁拢路碌禄脴-1
 */
 int str_start_with(const char* origin, char* prefix)
 {
@@ -214,7 +214,7 @@ int str_start_with(const char* origin, char* prefix)
 }
 
 /**
-* 字符串origin以字符串end结尾，返回0；否则返回1；异常返回-1
+* 脳脰路没麓庐origin脪脭脳脰路没麓庐end陆谩脦虏拢卢路碌禄脴0拢禄路帽脭貌路碌禄脴1拢禄脪矛鲁拢路碌禄脴-1
 */
 int str_end_with(const char* origin, char* end)
 {

@@ -88,7 +88,7 @@ int socket_recv_data_one_loop(int fd, void* buf, int nbytes) {
 			nleft -= nread;
 			ptr += nread;
 
-			// Ä¿Ç°Ö»½ÓÊÕÒ»´Î
+			// ç›®å‰åªæ¥æ”¶ä¸€æ¬¡
 			break;
 		}
 	}

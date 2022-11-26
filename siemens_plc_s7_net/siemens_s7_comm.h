@@ -3,10 +3,10 @@
 #include "utill.h"
 
 typedef struct _tag_siemens_s7_address_data {
-	byte	data_code;			// ÀàĞÍµÄ´úºÅÖµ
-	ushort	db_block;			// »ñÈ¡»òÉèÖÃPLCµÄDB¿éÊı¾İĞÅÏ¢
-	int		address_start;		// Êı×ÖµÄÆğÊ¼µØÖ·£¬Ò²¾ÍÊÇÆ«ÒÆµØÖ·
-	int		length;				// ¶ÁÈ¡µÄÊı¾İ³¤¶È
+	byte	data_code;			// ç±»å‹çš„ä»£å·å€¼
+	ushort	db_block;			// è·å–æˆ–è®¾ç½®PLCçš„DBå—æ•°æ®ä¿¡æ¯
+	int		address_start;		// æ•°å­—çš„èµ·å§‹åœ°å€ï¼Œä¹Ÿå°±æ˜¯åç§»åœ°å€
+	int		length;				// è¯»å–çš„æ•°æ®é•¿åº¦
 }siemens_s7_address_data;
 
 siemens_s7_address_data s7_analysis_address(const char* address, int length);

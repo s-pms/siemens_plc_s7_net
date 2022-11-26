@@ -4,10 +4,10 @@
 #include "dynstr.h"
 
 /// <summary>
-/// ��������ĵ�ַ��Ϣ
+/// 计算特殊的地址信息
 /// </summary>
-/// <param name="address">�ַ�����ַ</param>
-/// <param name="isCT">�Ƿ��Ƕ�ʱ���ͼ������ĵ�ַ</param>
+/// <param name="address">字符串地址</param>
+/// <param name="isCT">是否是定时器和计数器的地址</param>
 /// <returns></returns>
 int calculate_address_started(const char* address, bool isCT)
 {
@@ -126,7 +126,7 @@ siemens_s7_address_data s7_analysis_address(const char* address, int length)
 		dynstr_range(ret_splits[0], sub_str_len, -1);
 		address_data.db_block = str_to_int(ret_splits[0]);
 
-		// ��׺��
+		// 后缀码
 		if (temp_split_count > 1)
 		{
 			sub_str_len = 0;
