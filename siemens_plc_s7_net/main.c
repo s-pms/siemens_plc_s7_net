@@ -68,13 +68,13 @@ int main(int argc, char** argv)
 			printf("Write\t %s \tbyte:\t %d, \tret: %d\n", address, w_b_val, ret);
 			GET_RESULT(ret);
 
-			short b_val = 0;
+			byte b_val = 0;
 			ret = s7_read_byte(fd, address, &b_val);
 			printf("Read\t %s \tbyte:\t %d\n", address, b_val);
 			GET_RESULT(ret);
 
 			//////////////////////////////////////////////////////////////////////////
-			short w_s_val = 123;
+			short w_s_val = 223;
 			strcpy(address, "MW100");
 			ret = s7_write_short(fd, address, w_s_val);
 			printf("Write\t %s \tshort:\t %d, \tret: %d\n", address, w_s_val, ret);
@@ -86,7 +86,7 @@ int main(int argc, char** argv)
 			GET_RESULT(ret);
 
 			//////////////////////////////////////////////////////////////////////////
-			ushort w_us_val = 255;
+			ushort w_us_val = 22255;
 			strcpy(address, "MW100");
 			ret = s7_write_ushort(fd, address, w_us_val);
 			printf("Write\t %s \tushort:\t %d, \tret: %d\n", address, w_us_val, ret);

@@ -599,14 +599,13 @@ s7_error_code_e s7_write_byte(int fd, const char* address, byte val)
 	if (fd > 0 && address != NULL)
 	{
 		int write_len = 1;
+		char temp[1] = { 0 };
 		byte_array_info write_data = { 0 };
-		write_data.data = (byte*)malloc(write_len);
-		memset(&write_data, 0, write_len);
+		write_data.data = temp;
 		write_data.data[0] = val;
 		write_data.length = write_len;
 
 		ret = write_byte_value(fd, address, 1, write_data);
-		RELEASE_DATA(write_data.data);
 	}
 	return ret;
 }
@@ -619,7 +618,7 @@ s7_error_code_e s7_write_short(int fd, const char* address, short val)
 		int write_len = 2;
 		byte_array_info write_data = { 0 };
 		write_data.data = (byte*)malloc(write_len);
-		memset(&write_data, 0, write_len);
+		memset(write_data.data, 0, write_len);
 		write_data.length = write_len;
 
 		short2bytes(htons(val), write_data.data);
@@ -637,7 +636,7 @@ s7_error_code_e s7_write_ushort(int fd, const char* address, ushort val)
 		int write_len = 2;
 		byte_array_info write_data = { 0 };
 		write_data.data = (byte*)malloc(write_len);
-		memset(&write_data, 0, write_len);
+		memset(write_data.data, 0, write_len);
 		write_data.length = write_len;
 
 		ushort2bytes(htons(val), write_data.data);
@@ -655,7 +654,7 @@ s7_error_code_e s7_write_int32(int fd, const char* address, int32 val)
 		int write_len = 4;
 		byte_array_info write_data;
 		write_data.data = (byte*)malloc(write_len);
-		memset(&write_data, 0, write_len);
+		memset(write_data.data, 0, write_len);
 		write_data.length = write_len;
 
 		int2bytes(htonl(val), write_data.data);
@@ -673,7 +672,7 @@ s7_error_code_e s7_write_uint32(int fd, const char* address, uint32 val)
 		int write_len = 4;
 		byte_array_info write_data;
 		write_data.data = (byte*)malloc(write_len);
-		memset(&write_data, 0, write_len);
+		memset(write_data.data, 0, write_len);
 		write_data.length = write_len;
 
 		uint2bytes(htonl(val), write_data.data);
@@ -691,7 +690,7 @@ s7_error_code_e s7_write_int64(int fd, const char* address, int64 val)
 		int write_len = 8;
 		byte_array_info write_data;
 		write_data.data = (byte*)malloc(write_len);
-		memset(&write_data, 0, write_len);
+		memset(write_data.data, 0, write_len);
 		write_data.length = write_len;
 
 		bigInt2bytes(htonll_(val), write_data.data);
@@ -709,7 +708,7 @@ s7_error_code_e s7_write_uint64(int fd, const char* address, uint64 val)
 		int write_len = 8;
 		byte_array_info write_data;
 		write_data.data = (byte*)malloc(write_len);
-		memset(&write_data, 0, write_len);
+		memset(write_data.data, 0, write_len);
 		write_data.length = write_len;
 
 		ubigInt2bytes(htonll_(val), write_data.data);
@@ -727,7 +726,7 @@ s7_error_code_e s7_write_float(int fd, const char* address, float val)
 		int write_len = 4;
 		byte_array_info write_data;
 		write_data.data = (byte*)malloc(write_len);
-		memset(&write_data, 0, write_len);
+		memset(write_data.data, 0, write_len);
 		write_data.length = write_len;
 
 		uint2bytes(htonf_(val), write_data.data);
@@ -745,7 +744,7 @@ s7_error_code_e s7_write_double(int fd, const char* address, double val)
 		int write_len = 8;
 		byte_array_info write_data;
 		write_data.data = (byte*)malloc(write_len);
-		memset(&write_data, 0, write_len);
+		memset(write_data.data, 0, write_len);
 		write_data.length = write_len;
 
 		bigInt2bytes(htond_(val), write_data.data);
