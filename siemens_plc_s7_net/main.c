@@ -19,7 +19,7 @@ int main(int argc, char** argv)
 	}
 #endif
 
-	char* plc_ip = "192.168.123.170";
+	char* plc_ip = "127.0.0.1";
 	int plc_port = 102;
 	if (argc > 1)
 	{
@@ -62,7 +62,19 @@ int main(int argc, char** argv)
 			GET_RESULT(ret);
 
 			//////////////////////////////////////////////////////////////////////////
-			short w_s_val = 23;
+			byte w_b_val = 23;
+			strcpy(address, "MB100");
+			ret = s7_write_byte(fd, address, w_b_val);
+			printf("Write\t %s \tbyte:\t %d, \tret: %d\n", address, w_b_val, ret);
+			GET_RESULT(ret);
+
+			short b_val = 0;
+			ret = s7_read_byte(fd, address, &b_val);
+			printf("Read\t %s \tbyte:\t %d\n", address, b_val);
+			GET_RESULT(ret);
+
+			//////////////////////////////////////////////////////////////////////////
+			short w_s_val = 123;
 			strcpy(address, "MW100");
 			ret = s7_write_short(fd, address, w_s_val);
 			printf("Write\t %s \tshort:\t %d, \tret: %d\n", address, w_s_val, ret);

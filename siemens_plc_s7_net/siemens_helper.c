@@ -215,7 +215,6 @@ byte_array_info build_write_byte_command(siemens_s7_address_data address, byte_a
 	if (value.data != NULL)
 	{
 		memcpy(command + 35, value.data, val_len);
-		free(value.data);
 	}
 
 	byte_array_info ret = { 0 };

@@ -1,0 +1,58 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="main.c" />
+    <ClCompile Include="siemens_helper.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="siemens_s7.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="siemens_s7_comm.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="socket.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="utill.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="dynstr.c">
+      <Filter>src</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="typedef.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="siemens_s7.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="siemens_helper.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="siemens_s7_comm.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="siemens_s7_private.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="socket.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="utill.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="dynstr.h">
+      <Filter>src</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="include">
+      <UniqueIdentifier>{6ac6160e-7b52-4c39-8f5e-28afecc35d25}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{674fecc8-c748-4058-a191-d4db34e4e56e}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

@@ -123,7 +123,7 @@ s7_error_code_e read_bit_value(int fd, const char* address, int length, byte_arr
 	return ret;
 }
 
-s7_error_code_e read_word_value(int fd, const char* address, int length, byte_array_info* out_bytes)
+s7_error_code_e read_byte_value(int fd, const char* address, int length, byte_array_info* out_bytes)
 {
 	siemens_s7_address_data address_data = s7_analysis_address(address, length);
 	return read_address_data(fd, address_data, out_bytes);
@@ -183,7 +183,7 @@ s7_error_code_e write_bit_value(int fd, const char* address, int length, bool va
 	return ret;
 }
 
-s7_error_code_e write_word_value(int fd, const char* address, int length, byte_array_info in_bytes)
+s7_error_code_e write_byte_value(int fd, const char* address, int length, byte_array_info in_bytes)
 {
 	siemens_s7_address_data address_data = s7_analysis_address(address, length);
 	return write_address_data(fd, address_data, in_bytes);
@@ -436,12 +436,26 @@ s7_error_code_e s7_read_bool(int fd, const char* address, bool* val)
 	return ret;
 }
 
+s7_error_code_e s7_read_byte(int fd, const char* address, byte* val)
+{
+	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
+	byte_array_info read_data;
+	memset(&read_data, 0, sizeof(read_data));
+	ret = read_byte_value(fd, address, 1, &read_data);
+	if (ret == S7_ERROR_CODE_OK && read_data.length > 0)
+	{
+		*val = read_data.data[0];
+		RELEASE_DATA(read_data.data);
+	}
+	return ret;
+}
+
 s7_error_code_e s7_read_short(int fd, const char* address, short* val)
 {
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
 	byte_array_info read_data;
 	memset(&read_data, 0, sizeof(read_data));
-	ret = read_word_value(fd, address, 2, &read_data);
+	ret = read_byte_value(fd, address, 2, &read_data);
 	if (ret == S7_ERROR_CODE_OK && read_data.length > 0)
 	{
 		*val = (short)ntohs(bytes2short(read_data.data));
@@ -455,7 +469,7 @@ s7_error_code_e s7_read_ushort(int fd, const char* address, ushort* val)
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
 	byte_array_info read_data;
 	memset(&read_data, 0, sizeof(read_data));
-	ret = read_word_value(fd, address, 2, &read_data);
+	ret = read_byte_value(fd, address, 2, &read_data);
 	if (ret == S7_ERROR_CODE_OK && read_data.length >= 2)
 	{
 		*val = ntohs(bytes2ushort(read_data.data));
@@ -469,7 +483,7 @@ s7_error_code_e s7_read_int32(int fd, const char* address, int32* val)
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
 	byte_array_info read_data;
 	memset(&read_data, 0, sizeof(read_data));
-	ret = read_word_value(fd, address, 4, &read_data);
+	ret = read_byte_value(fd, address, 4, &read_data);
 	if (ret == S7_ERROR_CODE_OK && read_data.length >= 4)
 	{
 		*val = (int32)ntohl(bytes2int32(read_data.data));
@@ -483,7 +497,7 @@ s7_error_code_e s7_read_uint32(int fd, const char* address, uint32* val)
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
 	byte_array_info read_data;
 	memset(&read_data, 0, sizeof(read_data));
-	ret = read_word_value(fd, address, 4, &read_data);
+	ret = read_byte_value(fd, address, 4, &read_data);
 	if (ret == S7_ERROR_CODE_OK && read_data.length >= 2)
 	{
 		*val = ntohl(bytes2uint32(read_data.data));
@@ -497,7 +511,7 @@ s7_error_code_e s7_read_int64(int fd, const char* address, int64* val)
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
 	byte_array_info read_data;
 	memset(&read_data, 0, sizeof(read_data));
-	ret = read_word_value(fd, address, 8, &read_data);
+	ret = read_byte_value(fd, address, 8, &read_data);
 	if (ret == S7_ERROR_CODE_OK && read_data.length >= 8)
 	{
 		*val = (int64)ntohll_(bytes2bigInt(read_data.data));
@@ -511,7 +525,7 @@ s7_error_code_e s7_read_uint64(int fd, const char* address, uint64* val)
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
 	byte_array_info read_data;
 	memset(&read_data, 0, sizeof(read_data));
-	ret = read_word_value(fd, address, 8, &read_data);
+	ret = read_byte_value(fd, address, 8, &read_data);
 	if (ret == S7_ERROR_CODE_OK && read_data.length >= 8)
 	{
 		*val = ntohll_(bytes2ubigInt(read_data.data));
@@ -525,7 +539,7 @@ s7_error_code_e s7_read_float(int fd, const char* address, float* val)
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
 	byte_array_info read_data;
 	memset(&read_data, 0, sizeof(read_data));
-	ret = read_word_value(fd, address, 4, &read_data);
+	ret = read_byte_value(fd, address, 4, &read_data);
 	if (ret == S7_ERROR_CODE_OK && read_data.length >= 4)
 	{
 		*val = ntohf_(bytes2uint32(read_data.data));
@@ -539,7 +553,7 @@ s7_error_code_e s7_read_double(int fd, const char* address, double* val)
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
 	byte_array_info read_data;
 	memset(&read_data, 0, sizeof(read_data));
-	ret = read_word_value(fd, address, 8, &read_data);
+	ret = read_byte_value(fd, address, 8, &read_data);
 	if (ret == S7_ERROR_CODE_OK && read_data.length >= 8)
 	{
 		*val = ntohd_(bytes2ubigInt(read_data.data));
@@ -556,7 +570,7 @@ s7_error_code_e s7_read_string(int fd, const char* address, int length, char** v
 		byte_array_info read_data;
 		memset(&read_data, 0, sizeof(read_data));
 		int read_len = (length % 2) == 1 ? length + 1 : length;
-		ret = read_word_value(fd, address, length, &read_data);
+		ret = read_byte_value(fd, address, length, &read_data);
 		if (ret == S7_ERROR_CODE_OK && read_data.length >= read_len)
 		{
 			char* ret_str = (char*)malloc(read_len);
@@ -579,19 +593,38 @@ s7_error_code_e s7_write_bool(int fd, const char* address, bool val)
 	return ret;
 }
 
+s7_error_code_e s7_write_byte(int fd, const char* address, byte val)
+{
+	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
+	if (fd > 0 && address != NULL)
+	{
+		int write_len = 1;
+		byte_array_info write_data = { 0 };
+		write_data.data = (byte*)malloc(write_len);
+		memset(&write_data, 0, write_len);
+		write_data.data[0] = val;
+		write_data.length = write_len;
+
+		ret = write_byte_value(fd, address, 1, write_data);
+		//RELEASE_DATA(write_data.data);
+	}
+	return ret;
+}
+
 s7_error_code_e s7_write_short(int fd, const char* address, short val)
 {
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
 	if (fd > 0 && address != NULL)
 	{
 		int write_len = 2;
-		byte_array_info write_data;
-		memset(&write_data, 0, sizeof(write_data));
+		byte_array_info write_data = { 0 };
 		write_data.data = (byte*)malloc(write_len);
+		memset(&write_data, 0, write_len);
 		write_data.length = write_len;
 
 		short2bytes(htons(val), write_data.data);
-		ret = write_word_value(fd, address, 2, write_data);
+		ret = write_byte_value(fd, address, 2, write_data);
+		RELEASE_DATA(write_data.data);
 	}
 	return ret;
 }
@@ -602,13 +635,14 @@ s7_error_code_e s7_write_ushort(int fd, const char* address, ushort val)
 	if (fd > 0 && address != NULL)
 	{
 		int write_len = 2;
-		byte_array_info write_data;
-		memset(&write_data, 0, sizeof(write_data));
+		byte_array_info write_data = { 0 };
 		write_data.data = (byte*)malloc(write_len);
+		memset(&write_data, 0, write_len);
 		write_data.length = write_len;
 
 		ushort2bytes(htons(val), write_data.data);
-		ret = write_word_value(fd, address, 2, write_data);
+		ret = write_byte_value(fd, address, 2, write_data);
+		RELEASE_DATA(write_data.data);
 	}
 	return ret;
 }
@@ -620,12 +654,13 @@ s7_error_code_e s7_write_int32(int fd, const char* address, int32 val)
 	{
 		int write_len = 4;
 		byte_array_info write_data;
-		memset(&write_data, 0, sizeof(write_data));
 		write_data.data = (byte*)malloc(write_len);
+		memset(&write_data, 0, write_len);
 		write_data.length = write_len;
 
 		int2bytes(htonl(val), write_data.data);
-		ret = write_word_value(fd, address, 4, write_data);
+		ret = write_byte_value(fd, address, 4, write_data);
+		RELEASE_DATA(write_data.data);
 	}
 	return ret;
 }
@@ -637,12 +672,13 @@ s7_error_code_e s7_write_uint32(int fd, const char* address, uint32 val)
 	{
 		int write_len = 4;
 		byte_array_info write_data;
-		memset(&write_data, 0, sizeof(write_data));
 		write_data.data = (byte*)malloc(write_len);
+		memset(&write_data, 0, write_len);
 		write_data.length = write_len;
 
 		uint2bytes(htonl(val), write_data.data);
-		ret = write_word_value(fd, address, 4, write_data);
+		ret = write_byte_value(fd, address, 4, write_data);
+		RELEASE_DATA(write_data.data);
 	}
 	return ret;
 }
@@ -654,12 +690,13 @@ s7_error_code_e s7_write_int64(int fd, const char* address, int64 val)
 	{
 		int write_len = 8;
 		byte_array_info write_data;
-		memset(&write_data, 0, sizeof(write_data));
 		write_data.data = (byte*)malloc(write_len);
+		memset(&write_data, 0, write_len);
 		write_data.length = write_len;
 
 		bigInt2bytes(htonll_(val), write_data.data);
-		ret = write_word_value(fd, address, 8, write_data);
+		ret = write_byte_value(fd, address, 8, write_data);
+		RELEASE_DATA(write_data.data);
 	}
 	return ret;
 }
@@ -671,12 +708,13 @@ s7_error_code_e s7_write_uint64(int fd, const char* address, uint64 val)
 	{
 		int write_len = 8;
 		byte_array_info write_data;
-		memset(&write_data, 0, sizeof(write_data));
 		write_data.data = (byte*)malloc(write_len);
+		memset(&write_data, 0, write_len);
 		write_data.length = write_len;
 
 		ubigInt2bytes(htonll_(val), write_data.data);
-		ret = write_word_value(fd, address, 8, write_data);
+		ret = write_byte_value(fd, address, 8, write_data);
+		RELEASE_DATA(write_data.data);
 	}
 	return ret;
 }
@@ -688,12 +726,13 @@ s7_error_code_e s7_write_float(int fd, const char* address, float val)
 	{
 		int write_len = 4;
 		byte_array_info write_data;
-		memset(&write_data, 0, sizeof(write_data));
 		write_data.data = (byte*)malloc(write_len);
+		memset(&write_data, 0, write_len);
 		write_data.length = write_len;
 
 		uint2bytes(htonf_(val), write_data.data);
-		ret = write_word_value(fd, address, 4, write_data);
+		ret = write_byte_value(fd, address, 4, write_data);
+		RELEASE_DATA(write_data.data);
 	}
 	return ret;
 }
@@ -705,12 +744,13 @@ s7_error_code_e s7_write_double(int fd, const char* address, double val)
 	{
 		int write_len = 8;
 		byte_array_info write_data;
-		memset(&write_data, 0, sizeof(write_data));
 		write_data.data = (byte*)malloc(write_len);
+		memset(&write_data, 0, write_len);
 		write_data.length = write_len;
 
 		bigInt2bytes(htond_(val), write_data.data);
-		ret = write_word_value(fd, address, 8, write_data);
+		ret = write_byte_value(fd, address, 8, write_data);
+		RELEASE_DATA(write_data.data);
 	}
 	return ret;
 }
@@ -727,7 +767,8 @@ s7_error_code_e s7_write_string(int fd, const char* address, int length, const c
 		memcpy(write_data.data, val, length);
 		write_data.length = write_len;
 
-		ret = write_word_value(fd, address, write_len / 2, write_data);
+		ret = write_byte_value(fd, address, write_len / 2, write_data);
+		RELEASE_DATA(write_data.data);
 	}
 	return ret;
 }
