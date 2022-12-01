@@ -606,7 +606,7 @@ s7_error_code_e s7_write_byte(int fd, const char* address, byte val)
 		write_data.length = write_len;
 
 		ret = write_byte_value(fd, address, 1, write_data);
-		//RELEASE_DATA(write_data.data);
+		RELEASE_DATA(write_data.data);
 	}
 	return ret;
 }
