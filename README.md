@@ -63,6 +63,7 @@ int get_plc_PDU_length();
 #### 2.读取数据
 ```c
 s7_error_code_e s7_read_bool(int fd, const char* address, bool* val);
+s7_error_code_e s7_read_byte(int fd, const char* address, byte* val);
 s7_error_code_e s7_read_short(int fd, const char* address, short* val);
 s7_error_code_e s7_read_ushort(int fd, const char* address, ushort* val);
 s7_error_code_e s7_read_int32(int fd, const char* address, int32* val);
@@ -78,6 +79,7 @@ s7_error_code_e s7_read_string(int fd, const char* address, int length, char** v
 
 ```c
 s7_error_code_e s7_write_bool(int fd, const char* address, bool val);
+s7_error_code_e s7_write_byte(int fd, const char* address, byte val);
 s7_error_code_e s7_write_short(int fd, const char* address, short val);
 s7_error_code_e s7_write_ushort(int fd, const char* address, ushort val);
 s7_error_code_e s7_write_int32(int fd, const char* address, int32 val);
