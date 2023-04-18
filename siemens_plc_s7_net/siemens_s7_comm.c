@@ -38,10 +38,10 @@ siemens_s7_address_data s7_analysis_address(const char* address, int length)
 		address_data.data_code = 0x06;
 		int sub_str_len = 2;
 
-		if (str_start_with(temp_address, "AIX") ||
-			str_start_with(temp_address, "AIB") ||
-			str_start_with(temp_address, "AIW") ||
-			str_start_with(temp_address, "AID"))
+		if (0 == str_start_with(temp_address, "AIX") ||
+			0 == str_start_with(temp_address, "AIB") ||
+			0 == str_start_with(temp_address, "AIW") ||
+			0 == str_start_with(temp_address, "AID"))
 		{
 			sub_str_len = 3;
 		}
@@ -54,10 +54,10 @@ siemens_s7_address_data s7_analysis_address(const char* address, int length)
 		address_data.data_code = 0x07;
 		int sub_str_len = 2;
 
-		if (str_start_with(temp_address, "AQX") ||
-			str_start_with(temp_address, "AQB") ||
-			str_start_with(temp_address, "AQW") ||
-			str_start_with(temp_address, "AQD"))
+		if (0 == str_start_with(temp_address, "AQX") ||
+			0 == str_start_with(temp_address, "AQB") ||
+			0 == str_start_with(temp_address, "AQW") ||
+			0 == str_start_with(temp_address, "AQD"))
 		{
 			sub_str_len = 3;
 		}
@@ -70,10 +70,10 @@ siemens_s7_address_data s7_analysis_address(const char* address, int length)
 		address_data.data_code = 0x81;
 		int sub_str_len = 1;
 
-		if (str_start_with(temp_address, "IX") ||
-			str_start_with(temp_address, "IB") ||
-			str_start_with(temp_address, "IW") ||
-			str_start_with(temp_address, "ID"))
+		if (0 == str_start_with(temp_address, "IX") ||
+			0 == str_start_with(temp_address, "IB") ||
+			0 == str_start_with(temp_address, "IW") ||
+			0 == str_start_with(temp_address, "ID"))
 		{
 			sub_str_len = 2;
 		}
@@ -86,10 +86,10 @@ siemens_s7_address_data s7_analysis_address(const char* address, int length)
 		address_data.data_code = 0x82;
 		int sub_str_len = 1;
 
-		if (str_start_with(temp_address, "QX") ||
-			str_start_with(temp_address, "QB") ||
-			str_start_with(temp_address, "QW") ||
-			str_start_with(temp_address, "QD"))
+		if (0 == str_start_with(temp_address, "QX") ||
+			0 == str_start_with(temp_address, "QB") ||
+			0 == str_start_with(temp_address, "QW") ||
+			0 == str_start_with(temp_address, "QD"))
 		{
 			sub_str_len = 2;
 		}
@@ -102,10 +102,10 @@ siemens_s7_address_data s7_analysis_address(const char* address, int length)
 		address_data.data_code = 0x83;
 		int sub_str_len = 1;
 
-		if (str_start_with(temp_address, "MX") ||
-			str_start_with(temp_address, "MB") ||
-			str_start_with(temp_address, "MW") ||
-			str_start_with(temp_address, "MD"))
+		if (0 == str_start_with(temp_address, "MX") ||
+			0 == str_start_with(temp_address, "MB") ||
+			0 == str_start_with(temp_address, "MW") ||
+			0 == str_start_with(temp_address, "MD"))
 		{
 			sub_str_len = 2;
 		}
@@ -130,10 +130,10 @@ siemens_s7_address_data s7_analysis_address(const char* address, int length)
 		if (temp_split_count > 1)
 		{
 			sub_str_len = 0;
-			if (str_start_with(ret_splits[1], "DBX") ||
-				str_start_with(ret_splits[1], "DBB") ||
-				str_start_with(ret_splits[1], "DBW") ||
-				str_start_with(ret_splits[1], "DBD"))
+			if (0 == str_start_with(ret_splits[1], "DBX") ||
+				0 == str_start_with(ret_splits[1], "DBB") ||
+				0 == str_start_with(ret_splits[1], "DBW") ||
+				0 == str_start_with(ret_splits[1], "DBD"))
 			{
 				sub_str_len = 3;
 			}
@@ -163,10 +163,10 @@ siemens_s7_address_data s7_analysis_address(const char* address, int length)
 		address_data.data_code = 0x84;
 		address_data.db_block = 1;
 		int sub_str_len = 1;
-		if (str_start_with(temp_address, "VX") ||
-			str_start_with(temp_address, "VB") ||
-			str_start_with(temp_address, "VW") ||
-			str_start_with(temp_address, "VD"))
+		if (0 == str_start_with(temp_address, "VX") ||
+			0 == str_start_with(temp_address, "VB") ||
+			0 == str_start_with(temp_address, "VW") ||
+			0 == str_start_with(temp_address, "VD"))
 		{
 			sub_str_len = 2;
 		}
