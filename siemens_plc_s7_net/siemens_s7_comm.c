@@ -144,7 +144,7 @@ siemens_s7_address_data s7_analysis_address(const char* address, int length)
 				sub_str_len = 3;
 			}
 
-			dynstr temp_addr = ret_splits[1];
+			dynstr temp_addr = dynstr_dup(ret_splits[1]);
 			if (temp_split_count > 2)
 			{
 				dynstr temp_addr2 = dynstr_cat(ret_splits[1], ".");
