@@ -12,16 +12,22 @@
 int calculate_address_started(const char* address, bool isCT)
 {
 	int addr_len = strlen(address);
-	if (dynstr_find(address, addr_len, ".", 1))
+	int ret_count = 0;
+
+	int ret = dynstr_find(address, addr_len, ".", 1);
+	if (ret < 0)  // 未找到 -1
 	{
-		return isCT ? str_to_int(address) : str_to_int(address) * 8;
+		ret_count = isCT ? str_to_int(address) : str_to_int(address) * 8;
 	}
 	else
 	{
 		int temp_split_count = 0;
 		dynstr* ret_splits = dynstr_split(address, addr_len, ".", 1, &temp_split_count);
-		return str_to_int(ret_splits[0]) * 8 + dynstr_len(ret_splits[1]);
+		ret_count = str_to_int(ret_splits[0]) * 8 + str_to_int(ret_splits[1]);
+
+		dynstr_freesplitres(ret_splits, temp_split_count);
 	}
+	return ret_count;
 }
 
 siemens_s7_address_data s7_analysis_address(const char* address, int length)
@@ -138,8 +144,19 @@ siemens_s7_address_data s7_analysis_address(const char* address, int length)
 				sub_str_len = 3;
 			}
 
-			dynstr_range(ret_splits[1], sub_str_len, -1);
-			address_data.address_start = calculate_address_started(ret_splits[1], false);
+			dynstr temp_addr = ret_splits[1];
+			if (temp_split_count > 2)
+			{
+				dynstr temp_addr2 = dynstr_cat(ret_splits[1], ".");
+				temp_addr = dynstr_cat_dynstr(temp_addr2, ret_splits[2]);
+				dynstr_free(temp_addr2);
+			}
+
+			dynstr_range(temp_addr, sub_str_len, -1);
+			address_data.address_start = calculate_address_started(temp_addr, false);
+			dynstr_free(temp_addr);
+
+			dynstr_freesplitres(ret_splits,temp_split_count);
 		}
 	}
 	else if (0 == str_start_with(temp_address, "T"))
