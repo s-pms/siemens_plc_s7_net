@@ -766,7 +766,7 @@ s7_error_code_e s7_write_string(int fd, const char* address, int length, const c
 		memcpy(write_data.data, val, length);
 		write_data.length = write_len;
 
-		ret = write_byte_value(fd, address, write_len / 2, write_data);
+		ret = write_byte_value(fd, address, write_len, write_data);
 		RELEASE_DATA(write_data.data);
 	}
 	return ret;
