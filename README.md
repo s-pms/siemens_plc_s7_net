@@ -133,7 +133,7 @@ int get_plc_PDU_length();
 ### 2.读取数据
 
 ```c
-7_error_code_e s7_read_bool(int fd, const char* address, bool* val);
+S7_error_code_e s7_read_bool(int fd, const char* address, bool* val);
 /* 从PLC读取布尔值数据
  * 参数:
  *   fd: 连接PLC的文件描述符
