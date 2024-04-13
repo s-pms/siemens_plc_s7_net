@@ -3,6 +3,8 @@
 
 #include "typedef.h"
 
+#define RELEASE_DATA(data) do { if ((data) != NULL) { free(data); (data) = NULL; } } while(0)
+
 typedef struct _tag_byte_array_info {
 	byte* data;	// 内容
 	int length; // 长度

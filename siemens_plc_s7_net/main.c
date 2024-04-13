@@ -6,6 +6,7 @@
 #pragma warning( disable : 4996)
 
 #define GET_RESULT(ret){ if(!ret) faild_count++; }
+#define RELEASE_DATA(data) do { if ((data) != NULL) { free(data); (data) = NULL; } } while(0)
 
 #include "siemens_s7.h"
 
@@ -27,7 +28,7 @@ int main(int argc, char** argv)
 		plc_port = atoi(argv[2]);
 	}
 
-	printf("%d\n", sizeof(double));
+	printf("%ld\n", sizeof(double));
 
 	int fd = -1;
 	bool ret = s7_connect(plc_ip, plc_port, S1200, &fd);
@@ -35,9 +36,10 @@ int main(int argc, char** argv)
 	{
 		s7_error_code_e ret = S7_ERROR_CODE_FAILED;
 
-		char* type = s7_read_plc_type(fd);
+		char* type = NULL;
+		ret = s7_read_plc_type(fd, &type);
 		printf("plc type: %s\n", type);
-		free(type);
+		RELEASE_DATA(type);
 
 		const int TEST_COUNT = 5000;
 		const int TEST_SLEEP_TIME = 1000;

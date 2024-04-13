@@ -18,10 +18,6 @@
 #include <arpa/inet.h>
 #endif
 
-#define RELEASE_DATA(addr) { if(addr != NULL) { free(addr);} }
-
-#define BUFFER_SIZE 1024
-
 siemens_plc_types_e current_plc = S1200;
 ushort word_length = 2;
 int port = 102;
@@ -96,280 +92,355 @@ bool s7_disconnect(int fd)
 //////////////////////////////////////////////////////////////////////////
 s7_error_code_e read_bit_value(int fd, const char* address, int length, byte_array_info* out_bytes)
 {
-	s7_error_code_e ret = S7_ERROR_CODE_UNKOWN;
-	siemens_s7_address_data address_data = s7_analysis_address(address, length);
-	byte_array_info core_cmd = build_read_bit_command(address_data);
-	if (core_cmd.data != NULL)
-	{
-		int need_send = core_cmd.length;
-		int real_sends = socket_send_data(fd, core_cmd.data, need_send);
-		if (real_sends == need_send)
-		{
-			byte temp[BUFFER_SIZE];
-			memset(temp, 0, BUFFER_SIZE);
-			byte_array_info response;
-			response.data = temp;
-			response.length = BUFFER_SIZE;
+	if (fd < 0 || address == NULL || out_bytes == NULL)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
 
-			int recv_size = s7_read_response(fd, &response);
-			int min = 11;
-			if (recv_size >= min) //header size
-			{
-				ret = s7_analysis_read_bit(response, out_bytes);
-			}
-		}
-		free(core_cmd.data);
+	siemens_s7_address_data address_data;
+	if (!s7_analysis_address(address, length, &address_data))
+		return S7_ERROR_CODE_PARSE_ADDRESS_FAILED;
+
+	s7_error_code_e ret = S7_ERROR_CODE_UNKOWN;
+	byte_array_info core_cmd = build_read_bit_command(address_data);
+	if (core_cmd.data == NULL)
+		return S7_ERROR_CODE_BUILD_CORE_CMD_FAILED;
+
+	if (!try_send_data_to_server(fd, &core_cmd, NULL)) {
+		RELEASE_DATA(core_cmd.data);
+		return S7_ERROR_CODE_SOCKET_SEND_FAILED;
 	}
+	RELEASE_DATA(core_cmd.data);
+
+	byte_array_info response = { 0 };
+	int recv_size = 0;
+	ret = s7_read_response(fd, &response, &recv_size);
+	if (ret != S7_ERROR_CODE_SUCCESS)
+	{
+		RELEASE_DATA(response.data);
+		return ret;
+	}
+
+	if (recv_size < MIN_HEADER_SIZE) {
+		RELEASE_DATA(response.data);
+		return S7_ERROR_CODE_RESPONSE_HEADER_FAILED;
+	}
+
+	ret = s7_analysis_read_bit(response, out_bytes);
+	RELEASE_DATA(response.data);
+
 	return ret;
 }
 
 s7_error_code_e read_byte_value(int fd, const char* address, int length, byte_array_info* out_bytes)
 {
-	siemens_s7_address_data address_data = s7_analysis_address(address, length);
+	if (fd <= 0 || address == NULL || length <= 0 || out_bytes == NULL)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
+
+	siemens_s7_address_data address_data;
+	if (!s7_analysis_address(address, length, &address_data))
+		return S7_ERROR_CODE_PARSE_ADDRESS_FAILED;
+
 	return read_address_data(fd, address_data, out_bytes);
 }
 
 s7_error_code_e read_address_data(int fd, siemens_s7_address_data address_data, byte_array_info* out_bytes)
 {
+	if (fd <= 0 || out_bytes == NULL)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
+
 	s7_error_code_e ret = S7_ERROR_CODE_UNKOWN;
 	byte_array_info core_cmd = build_read_byte_command(address_data);
-	if (core_cmd.data != NULL)
-	{
-		int need_send = core_cmd.length;
-		int real_sends = socket_send_data(fd, core_cmd.data, need_send);
-		if (real_sends == need_send)
-		{
-			byte temp[BUFFER_SIZE];
-			memset(temp, 0, BUFFER_SIZE);
-			byte_array_info response;
-			response.data = temp;
-			response.length = BUFFER_SIZE;
+	if (core_cmd.data == NULL)
+		return S7_ERROR_CODE_BUILD_CORE_CMD_FAILED;
 
-			int recv_size = s7_read_response(fd, &response);
-			int min = 11;
-			if (recv_size >= min) //header size
-				ret = s7_analysis_read_byte(response, out_bytes);
-		}
-		free(core_cmd.data);
+	if (!try_send_data_to_server(fd, &core_cmd, NULL)) {
+		RELEASE_DATA(core_cmd.data);
+		return S7_ERROR_CODE_SOCKET_SEND_FAILED;
 	}
+	RELEASE_DATA(core_cmd.data);
+
+	byte_array_info response = { 0 };
+	int recv_size = 0;
+	ret = s7_read_response(fd, &response, &recv_size);
+	if (ret != S7_ERROR_CODE_SUCCESS)
+	{
+		RELEASE_DATA(response.data);
+		return ret;
+	}
+
+	if (recv_size < MIN_HEADER_SIZE) {
+		RELEASE_DATA(response.data);
+		return S7_ERROR_CODE_RESPONSE_HEADER_FAILED;
+	}
+
+	ret = s7_analysis_read_byte(response, out_bytes);
+	RELEASE_DATA(response.data);
+
 	return ret;
 }
 
 //////////////////////////////////////////////////////////////////////////
 s7_error_code_e write_bit_value(int fd, const char* address, int length, bool value)
 {
-	siemens_s7_address_data address_data = s7_analysis_address(address, length);
+	if (fd <= 0 || address == NULL)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
+
+	siemens_s7_address_data address_data;
+	if (!s7_analysis_address(address, length, &address_data))
+		return S7_ERROR_CODE_PARSE_ADDRESS_FAILED;
+
 	s7_error_code_e ret = S7_ERROR_CODE_UNKOWN;
 	byte_array_info core_cmd = build_write_bit_command(address_data, value);
-	if (core_cmd.data != NULL)
-	{
-		int need_send = core_cmd.length;
-		int real_sends = socket_send_data(fd, core_cmd.data, need_send);
-		if (real_sends == need_send)
-		{
-			byte temp[BUFFER_SIZE];
-			memset(temp, 0, BUFFER_SIZE);
-			byte_array_info response;
-			response.data = temp;
-			response.length = BUFFER_SIZE;
+	if (core_cmd.data == NULL)
+		return S7_ERROR_CODE_BUILD_CORE_CMD_FAILED;
 
-			int recv_size = s7_read_response(fd, &response);
-			int min = 11;
-			if (recv_size >= min) //header size
-				ret = s7_analysis_write(response);
-		}
-		free(core_cmd.data);
+	if (!try_send_data_to_server(fd, &core_cmd, NULL)) {
+		RELEASE_DATA(core_cmd.data);
+		return S7_ERROR_CODE_SOCKET_SEND_FAILED;
 	}
+	RELEASE_DATA(core_cmd.data);
+
+	byte_array_info response = { 0 };
+	int recv_size = 0;
+	ret = s7_read_response(fd, &response, &recv_size);
+	if (ret != S7_ERROR_CODE_SUCCESS)
+	{
+		RELEASE_DATA(response.data);
+		return ret;
+	}
+
+	if (recv_size < MIN_HEADER_SIZE) {
+		RELEASE_DATA(response.data);
+		return S7_ERROR_CODE_RESPONSE_HEADER_FAILED;
+	}
+
+	ret = s7_analysis_write(response);
+	RELEASE_DATA(response.data);
+
 	return ret;
 }
 
 s7_error_code_e write_byte_value(int fd, const char* address, int length, byte_array_info in_bytes)
 {
-	siemens_s7_address_data address_data = s7_analysis_address(address, length);
+	if (fd <= 0 || address == NULL || length <= 0)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
+
+	siemens_s7_address_data address_data;
+	if (!s7_analysis_address(address, length, &address_data))
+		return S7_ERROR_CODE_PARSE_ADDRESS_FAILED;
+
 	return write_address_data(fd, address_data, in_bytes);
 }
 
 s7_error_code_e write_address_data(int fd, siemens_s7_address_data address_data, byte_array_info in_bytes)
 {
+	if (fd <= 0)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
+
 	s7_error_code_e ret = S7_ERROR_CODE_UNKOWN;
 	byte_array_info core_cmd = build_write_byte_command(address_data, in_bytes);
-	if (core_cmd.data != NULL)
-	{
-		int need_send = core_cmd.length;
-		int real_sends = socket_send_data(fd, core_cmd.data, need_send);
-		if (real_sends == need_send)
-		{
-			byte temp[BUFFER_SIZE];
-			memset(temp, 0, BUFFER_SIZE);
-			byte_array_info response;
-			response.data = temp;
-			response.length = BUFFER_SIZE;
+	if (core_cmd.data == NULL)
+		return S7_ERROR_CODE_BUILD_CORE_CMD_FAILED;
 
-			int recv_size = s7_read_response(fd, &response);
-			int min = 11;
-			if (recv_size >= min) //header size
-				ret = s7_analysis_write(response);
-		}
-		free(core_cmd.data);
+	if (!try_send_data_to_server(fd, &core_cmd, NULL)) {
+		RELEASE_DATA(core_cmd.data);
+		return S7_ERROR_CODE_SOCKET_SEND_FAILED;
 	}
+	RELEASE_DATA(core_cmd.data);
+
+	byte_array_info response = { 0 };
+	int recv_size = 0;
+	ret = s7_read_response(fd, &response, &recv_size);
+	if (ret != S7_ERROR_CODE_SUCCESS)
+	{
+		RELEASE_DATA(response.data);
+		return ret;
+	}
+
+	if (recv_size < MIN_HEADER_SIZE) {
+		RELEASE_DATA(response.data);
+		return S7_ERROR_CODE_RESPONSE_HEADER_FAILED;
+	}
+
+	ret = s7_analysis_write(response);
+	RELEASE_DATA(response.data);
+
 	return ret;
 }
 
-bool s7_remote_run(int fd)
+s7_error_code_e s7_remote_run(int fd)
 {
-	bool ret = false;
+	if (fd < 0)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
+
+	s7_error_code_e ret = S7_ERROR_CODE_UNKOWN;
 	const byte* core_cmd_temp = g_s7_stop;
 
 	int core_cmd_len = sizeof(core_cmd_temp);
 	byte* core_cmd = (byte*)malloc(core_cmd_len);
+	if (core_cmd == NULL)
+		return S7_ERROR_CODE_BUILD_CORE_CMD_FAILED;
+
 	memcpy(core_cmd, core_cmd_temp, core_cmd_len);
 
-	byte_array_info temp;
+	byte_array_info temp = { 0 };
 	temp.data = core_cmd;
 	temp.length = core_cmd_len;
-	if (core_cmd != NULL)
-	{
-		int need_send = temp.length;
-		int real_sends = socket_send_data(fd, temp.data, need_send);
-		if (real_sends == need_send)
-		{
-			byte temp[BUFFER_SIZE];
-			memset(temp, 0, BUFFER_SIZE);
-			byte_array_info response;
-			response.data = temp;
-			response.length = BUFFER_SIZE;
 
-			int recv_size = s7_read_response(fd, &response);
-			int min = 11;
-			if (recv_size >= min) //header size
-			{
-				s7_error_code_e ret_code = s7_analysis_write(response);
-				if (ret_code == S7_ERROR_CODE_OK)
-					ret = true;
-			}
-		}
-		free(temp.data);
+	if (!try_send_data_to_server(fd, &temp, NULL)) {
+		RELEASE_DATA(temp.data);
+		return S7_ERROR_CODE_SOCKET_SEND_FAILED;
 	}
+	RELEASE_DATA(temp.data);
+
+	byte_array_info response = { 0 };
+	int recv_size = 0;
+	ret = s7_read_response(fd, &response, &recv_size);
+	if (ret != S7_ERROR_CODE_SUCCESS)
+	{
+		RELEASE_DATA(response.data);
+		return false;
+	}
+
+	if (recv_size < MIN_HEADER_SIZE) {
+		RELEASE_DATA(response.data);
+		return S7_ERROR_CODE_RESPONSE_HEADER_FAILED;
+	}
+
+	ret = s7_analysis_write(response);
+	RELEASE_DATA(response.data);
 
 	return ret;
 }
 
-bool s7_remote_stop(int fd)
+s7_error_code_e s7_remote_stop(int fd)
 {
-	bool ret = false;
+	if (fd <= 0)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
+
+	s7_error_code_e ret = S7_ERROR_CODE_UNKOWN;
 	const byte* core_cmd_temp = g_s7_stop;
 	int core_cmd_len = sizeof(g_s7_stop);
 
 	byte* core_cmd = (byte*)malloc(core_cmd_len);
+	if (core_cmd == NULL)
+		return S7_ERROR_CODE_BUILD_CORE_CMD_FAILED;
 	memcpy(core_cmd, core_cmd_temp, core_cmd_len);
 
-	byte_array_info temp;
+	byte_array_info temp = { 0 };
 	temp.data = core_cmd;
 	temp.length = core_cmd_len;
-	if (temp.data != NULL)
-	{
-		int need_send = temp.length;
-		int real_sends = socket_send_data(fd, temp.data, need_send);
-		if (real_sends == need_send)
-		{
-			byte temp[BUFFER_SIZE];
-			memset(temp, 0, BUFFER_SIZE);
-			byte_array_info response;
-			response.data = temp;
-			response.length = BUFFER_SIZE;
 
-			int recv_size = s7_read_response(fd, &response);
-			int min = 11;
-			if (recv_size >= min) //header size
-			{
-				s7_error_code_e ret_code = s7_analysis_write(response);
-				if (ret_code == S7_ERROR_CODE_OK)
-					ret = true;
-			}
-		}
-		free(temp.data);
+	if (!try_send_data_to_server(fd, &temp, NULL)) {
+		RELEASE_DATA(temp.data);
+		return S7_ERROR_CODE_SOCKET_SEND_FAILED;
 	}
+	RELEASE_DATA(temp.data);
+
+	byte_array_info response = { 0 };
+	int recv_size = 0;
+	ret = s7_read_response(fd, &response, &recv_size);
+	if (ret != S7_ERROR_CODE_SUCCESS)
+	{
+		RELEASE_DATA(response.data);
+		return ret;
+	}
+
+	if (recv_size < MIN_HEADER_SIZE) {
+		RELEASE_DATA(response.data);
+		return S7_ERROR_CODE_RESPONSE_HEADER_FAILED;
+	}
+
+	ret = s7_analysis_write(response);
+	RELEASE_DATA(response.data);
 
 	return ret;
 }
 
-bool s7_remote_reset(int fd)
+s7_error_code_e s7_remote_reset(int fd)
 {
-	bool ret = false;
+	if (fd <= 0)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
+
+	s7_error_code_e ret = S7_ERROR_CODE_UNKOWN;
 	byte core_cmd_temp[] = { 0x06, 0x10, 0x00, 0x00, 0x01, 0x00 };
 
 	int core_cmd_len = sizeof(core_cmd_temp) / sizeof(core_cmd_temp[0]);
 	byte* core_cmd = (byte*)malloc(core_cmd_len);
 	memcpy(core_cmd, core_cmd_temp, core_cmd_len);
 
-	byte_array_info temp;
+	byte_array_info temp = { 0 };
 	temp.data = core_cmd;
 	temp.length = core_cmd_len;
-	if (temp.data != NULL)
-	{
-		int need_send = temp.length;
-		int real_sends = socket_send_data(fd, temp.data, need_send);
-		if (real_sends == need_send)
-		{
-			byte temp[BUFFER_SIZE];
-			memset(temp, 0, BUFFER_SIZE);
-			byte_array_info response;
-			response.data = temp;
-			response.length = BUFFER_SIZE;
 
-			int recv_size = s7_read_response(fd, &response);
-			int min = 11;
-			if (recv_size >= min) //header size
-			{
-				s7_error_code_e ret_code = s7_analysis_write(response);
-				if (ret_code == S7_ERROR_CODE_OK)
-					ret = true;
-			}
-		}
-		free(temp.data);
+	if (!try_send_data_to_server(fd, &temp, NULL)) {
+		RELEASE_DATA(temp.data);
+		return S7_ERROR_CODE_SOCKET_SEND_FAILED;
 	}
+	RELEASE_DATA(temp.data);
+
+	byte_array_info response = { 0 };
+	int recv_size = 0;
+	ret = s7_read_response(fd, &response, &recv_size);
+	if (ret != S7_ERROR_CODE_SUCCESS)
+	{
+		RELEASE_DATA(response.data);
+		return ret;
+	}
+
+	if (recv_size < MIN_HEADER_SIZE) {
+		RELEASE_DATA(response.data);
+		return S7_ERROR_CODE_RESPONSE_HEADER_FAILED;
+	}
+
+	ret = s7_analysis_write(response);
+	RELEASE_DATA(response.data);
 
 	return ret;
 }
 
-char* s7_read_plc_type(int fd)
+s7_error_code_e s7_read_plc_type(int fd, char** type)
 {
-	bool is_ok = false;
-	byte_array_info out_bytes;
-	memset(&out_bytes, 0, sizeof(out_bytes));
+	if (fd <= 0)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
+
+	s7_error_code_e ret = S7_ERROR_CODE_UNKOWN;
+	byte_array_info out_bytes = { 0 };
 
 	byte* core_cmd = g_plc_order_number;
 	int core_cmd_len = sizeof(g_plc_order_number);
-	if (core_cmd != NULL)
-	{
-		int need_send = core_cmd_len;
-		int real_sends = socket_send_data(fd, core_cmd, need_send);
-		if (real_sends == need_send)
-		{
-			byte temp[BUFFER_SIZE];
-			memset(temp, 0, BUFFER_SIZE);
-			byte_array_info response;
-			response.data = temp;
-			response.length = BUFFER_SIZE;
 
-			int recv_size = s7_read_response(fd, &response);
-			int min = 21;
-			if (recv_size >= min) //header size
-			{
-				out_bytes.length = 20;
-				out_bytes.data = (byte*)malloc(out_bytes.length + 1);
-				memset(out_bytes.data, 0, out_bytes.length + 1);
-				memcpy((char*)out_bytes.data, response.data + 71, out_bytes.length);
-				is_ok = true;
-			}
-		}
+	byte_array_info temp = { 0 };
+	temp.data = core_cmd;
+	temp.length = core_cmd_len;
+
+	if (!try_send_data_to_server(fd, &temp, NULL)) {
+		return S7_ERROR_CODE_SOCKET_SEND_FAILED;
 	}
 
-	if (is_ok && out_bytes.length > 0)
+	byte_array_info response = { 0 };
+	int recv_size = 0;
+	ret = s7_read_response(fd, &response, &recv_size);
+	if (ret != S7_ERROR_CODE_SUCCESS)
 	{
-		return (char*)out_bytes.data;
+		RELEASE_DATA(response.data);
+		return ret;
 	}
-	return NULL;
+
+	if (recv_size < MIN_HEADER_SIZE) {
+		RELEASE_DATA(response.data);
+		return S7_ERROR_CODE_RESPONSE_HEADER_FAILED;
+	}
+
+	out_bytes.length = 20;
+	out_bytes.data = (byte*)malloc(out_bytes.length + 1);
+	memset(out_bytes.data, 0, out_bytes.length + 1);
+	memcpy((char*)out_bytes.data, response.data + 71, out_bytes.length);
+	if (out_bytes.length > 0)
+	{
+		*type = (char*)out_bytes.data;
+	}
+
+	return ret;
 }
 
 bool initialization_on_connect(int fd)
@@ -378,7 +449,7 @@ bool initialization_on_connect(int fd)
 	bool is_ok = false;
 
 	// 第一次握手 -> First handshake
-	byte_array_info temp;
+	byte_array_info temp = { 0 };
 	temp.data = g_plc_head1;
 	temp.length = sizeof(g_plc_head1);
 	is_ok = read_data_from_core_server(fd, temp, &ret);
@@ -404,31 +475,44 @@ bool initialization_on_connect(int fd)
 	return true;
 }
 
-int s7_read_response(int fd, byte_array_info* response)
+s7_error_code_e s7_read_response(int fd, byte_array_info* response, int* read_count)
 {
-	int   nread = 0;
+	if (fd <= 0 || read_count == 0 || response == NULL)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
+
+	byte* temp = malloc(BUFFER_SIZE); // 动态分配缓冲区
+	if (temp == NULL)
+		return S7_ERROR_CODE_MALLOC_FAILED;
+
+	memset(temp, 0, BUFFER_SIZE);
+	response->data = temp;
+	response->length = BUFFER_SIZE;
+
+	*read_count = 0;
 	char* ptr = (char*)response->data;
 
-	if (fd < 0 || response->length <= 0) return -1;
-	nread = (int)recv(fd, ptr, response->length, 0);
+	if (fd <= 0 || response->length <= 0) return -1;
+	*read_count = (int)recv(fd, ptr, response->length, 0);
 
-	if (nread < 0) {
-		return -1;
+	if (*read_count < 0) {
+		return S7_ERROR_CODE_FAILED;
 	}
-	response->length = nread;
+	response->length = *read_count;
 
-	return nread;
+	return S7_ERROR_CODE_SUCCESS;
 }
 
 //////////////////////////////////////////////////////////////////////////
 
 s7_error_code_e s7_read_bool(int fd, const char* address, bool* val)
 {
+	if (fd <= 0 || address == NULL || strlen(address) == 0 || val == NULL)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
+
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
-	byte_array_info read_data;
-	memset(&read_data, 0, sizeof(read_data));
+	byte_array_info read_data = { 0 };
 	ret = read_bit_value(fd, address, 1, &read_data);
-	if (ret == S7_ERROR_CODE_OK && read_data.length > 0)
+	if (ret == S7_ERROR_CODE_SUCCESS && read_data.length > 0)
 	{
 		*val = (bool)read_data.data[0];
 		RELEASE_DATA(read_data.data);
@@ -438,11 +522,13 @@ s7_error_code_e s7_read_bool(int fd, const char* address, bool* val)
 
 s7_error_code_e s7_read_byte(int fd, const char* address, byte* val)
 {
+	if (fd <= 0 || address == NULL || strlen(address) == 0 || val == NULL)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
+
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
-	byte_array_info read_data;
-	memset(&read_data, 0, sizeof(read_data));
+	byte_array_info read_data = { 0 };
 	ret = read_byte_value(fd, address, 1, &read_data);
-	if (ret == S7_ERROR_CODE_OK && read_data.length > 0)
+	if (ret == S7_ERROR_CODE_SUCCESS && read_data.length > 0)
 	{
 		*val = read_data.data[0];
 		RELEASE_DATA(read_data.data);
@@ -452,11 +538,13 @@ s7_error_code_e s7_read_byte(int fd, const char* address, byte* val)
 
 s7_error_code_e s7_read_short(int fd, const char* address, short* val)
 {
+	if (fd <= 0 || address == NULL || strlen(address) == 0 || val == NULL)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
+
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
-	byte_array_info read_data;
-	memset(&read_data, 0, sizeof(read_data));
+	byte_array_info read_data = { 0 };
 	ret = read_byte_value(fd, address, 2, &read_data);
-	if (ret == S7_ERROR_CODE_OK && read_data.length > 0)
+	if (ret == S7_ERROR_CODE_SUCCESS && read_data.length > 0)
 	{
 		*val = (short)ntohs(bytes2short(read_data.data));
 		RELEASE_DATA(read_data.data);
@@ -466,11 +554,13 @@ s7_error_code_e s7_read_short(int fd, const char* address, short* val)
 
 s7_error_code_e s7_read_ushort(int fd, const char* address, ushort* val)
 {
+	if (fd <= 0 || address == NULL || strlen(address) == 0 || val == NULL)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
+
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
-	byte_array_info read_data;
-	memset(&read_data, 0, sizeof(read_data));
+	byte_array_info read_data = { 0 };
 	ret = read_byte_value(fd, address, 2, &read_data);
-	if (ret == S7_ERROR_CODE_OK && read_data.length >= 2)
+	if (ret == S7_ERROR_CODE_SUCCESS && read_data.length >= 2)
 	{
 		*val = ntohs(bytes2ushort(read_data.data));
 		RELEASE_DATA(read_data.data);
@@ -480,11 +570,13 @@ s7_error_code_e s7_read_ushort(int fd, const char* address, ushort* val)
 
 s7_error_code_e s7_read_int32(int fd, const char* address, int32* val)
 {
+	if (fd <= 0 || address == NULL || strlen(address) == 0 || val == NULL)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
+
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
-	byte_array_info read_data;
-	memset(&read_data, 0, sizeof(read_data));
+	byte_array_info read_data = { 0 };
 	ret = read_byte_value(fd, address, 4, &read_data);
-	if (ret == S7_ERROR_CODE_OK && read_data.length >= 4)
+	if (ret == S7_ERROR_CODE_SUCCESS && read_data.length >= 4)
 	{
 		*val = (int32)ntohl(bytes2int32(read_data.data));
 		RELEASE_DATA(read_data.data);
@@ -494,11 +586,13 @@ s7_error_code_e s7_read_int32(int fd, const char* address, int32* val)
 
 s7_error_code_e s7_read_uint32(int fd, const char* address, uint32* val)
 {
+	if (fd <= 0 || address == NULL || strlen(address) == 0 || val == NULL)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
+
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
-	byte_array_info read_data;
-	memset(&read_data, 0, sizeof(read_data));
+	byte_array_info read_data = { 0 };
 	ret = read_byte_value(fd, address, 4, &read_data);
-	if (ret == S7_ERROR_CODE_OK && read_data.length >= 2)
+	if (ret == S7_ERROR_CODE_SUCCESS && read_data.length >= 2)
 	{
 		*val = ntohl(bytes2uint32(read_data.data));
 		RELEASE_DATA(read_data.data);
@@ -508,11 +602,13 @@ s7_error_code_e s7_read_uint32(int fd, const char* address, uint32* val)
 
 s7_error_code_e s7_read_int64(int fd, const char* address, int64* val)
 {
+	if (fd <= 0 || address == NULL || strlen(address) == 0 || val == NULL)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
+
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
-	byte_array_info read_data;
-	memset(&read_data, 0, sizeof(read_data));
+	byte_array_info read_data = { 0 };
 	ret = read_byte_value(fd, address, 8, &read_data);
-	if (ret == S7_ERROR_CODE_OK && read_data.length >= 8)
+	if (ret == S7_ERROR_CODE_SUCCESS && read_data.length >= 8)
 	{
 		*val = (int64)ntohll_(bytes2bigInt(read_data.data));
 		RELEASE_DATA(read_data.data);
@@ -522,11 +618,13 @@ s7_error_code_e s7_read_int64(int fd, const char* address, int64* val)
 
 s7_error_code_e s7_read_uint64(int fd, const char* address, uint64* val)
 {
+	if (fd <= 0 || address == NULL || strlen(address) == 0 || val == NULL)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
+
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
-	byte_array_info read_data;
-	memset(&read_data, 0, sizeof(read_data));
+	byte_array_info read_data = { 0 };
 	ret = read_byte_value(fd, address, 8, &read_data);
-	if (ret == S7_ERROR_CODE_OK && read_data.length >= 8)
+	if (ret == S7_ERROR_CODE_SUCCESS && read_data.length >= 8)
 	{
 		*val = ntohll_(bytes2ubigInt(read_data.data));
 		RELEASE_DATA(read_data.data);
@@ -536,11 +634,13 @@ s7_error_code_e s7_read_uint64(int fd, const char* address, uint64* val)
 
 s7_error_code_e s7_read_float(int fd, const char* address, float* val)
 {
+	if (fd <= 0 || address == NULL || strlen(address) == 0 || val == NULL)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
+
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
-	byte_array_info read_data;
-	memset(&read_data, 0, sizeof(read_data));
+	byte_array_info read_data = { 0 };
 	ret = read_byte_value(fd, address, 4, &read_data);
-	if (ret == S7_ERROR_CODE_OK && read_data.length >= 4)
+	if (ret == S7_ERROR_CODE_SUCCESS && read_data.length >= 4)
 	{
 		*val = ntohf_(bytes2uint32(read_data.data));
 		RELEASE_DATA(read_data.data);
@@ -550,11 +650,13 @@ s7_error_code_e s7_read_float(int fd, const char* address, float* val)
 
 s7_error_code_e s7_read_double(int fd, const char* address, double* val)
 {
+	if (fd <= 0 || address == NULL || strlen(address) == 0 || val == NULL)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
+
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
-	byte_array_info read_data;
-	memset(&read_data, 0, sizeof(read_data));
+	byte_array_info read_data = { 0 };
 	ret = read_byte_value(fd, address, 8, &read_data);
-	if (ret == S7_ERROR_CODE_OK && read_data.length >= 8)
+	if (ret == S7_ERROR_CODE_SUCCESS && read_data.length >= 8)
 	{
 		*val = ntohd_(bytes2ubigInt(read_data.data));
 		RELEASE_DATA(read_data.data);
@@ -564,211 +666,206 @@ s7_error_code_e s7_read_double(int fd, const char* address, double* val)
 
 s7_error_code_e s7_read_string(int fd, const char* address, int length, char** val)
 {
+	if (fd <= 0 || address == NULL || length <= 0 || strlen(address) == 0)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
+
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
-	if (length > 0)
+	byte_array_info read_data = { 0 };
+	int read_len = (length % 2) == 1 ? length + 1 : length;
+	ret = read_byte_value(fd, address, length, &read_data);
+	if (ret == S7_ERROR_CODE_SUCCESS && read_data.length >= read_len)
 	{
-		byte_array_info read_data;
-		memset(&read_data, 0, sizeof(read_data));
-		int read_len = (length % 2) == 1 ? length + 1 : length;
-		ret = read_byte_value(fd, address, length, &read_data);
-		if (ret == S7_ERROR_CODE_OK && read_data.length >= read_len)
-		{
-			char* ret_str = (char*)malloc(read_len);
-			memset(ret_str, 0, read_len);
-			memcpy(ret_str, read_data.data, read_len);
-			RELEASE_DATA(read_data.data);
-			*val = ret_str;
-		}
+		char* ret_str = (char*)malloc(read_len);
+		memset(ret_str, 0, read_len);
+		memcpy(ret_str, read_data.data, read_len);
+		RELEASE_DATA(read_data.data);
+		*val = ret_str;
 	}
 	return ret;
 }
 
 s7_error_code_e s7_write_bool(int fd, const char* address, bool val)
 {
-	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
-	if (fd > 0 && address != NULL)
-	{
-		ret = write_bit_value(fd, address, 1, val);
-	}
-	return ret;
+	if (fd <= 0 || address == NULL || strlen(address) == 0)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
+
+	return write_bit_value(fd, address, 1, val);
 }
 
 s7_error_code_e s7_write_byte(int fd, const char* address, byte val)
 {
-	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
-	if (fd > 0 && address != NULL)
-	{
-		int write_len = 1;
-		char temp[1] = { 0 };
-		byte_array_info write_data = { 0 };
-		write_data.data = temp;
-		write_data.data[0] = val;
-		write_data.length = write_len;
+	if (fd <= 0 || address == NULL || strlen(address) == 0)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
 
-		ret = write_byte_value(fd, address, 1, write_data);
-	}
-	return ret;
+	int write_len = 1;
+	char temp[1] = { 0 };
+	byte_array_info write_data = { 0 };
+	write_data.data = temp;
+	write_data.data[0] = val;
+	write_data.length = write_len;
+
+	return write_byte_value(fd, address, 1, write_data);
 }
 
 s7_error_code_e s7_write_short(int fd, const char* address, short val)
 {
-	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
-	if (fd > 0 && address != NULL)
-	{
-		int write_len = 2;
-		byte_array_info write_data = { 0 };
-		write_data.data = (byte*)malloc(write_len);
-		memset(write_data.data, 0, write_len);
-		write_data.length = write_len;
+	if (fd <= 0 || address == NULL || strlen(address) == 0)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
 
-		short2bytes(htons(val), write_data.data);
-		ret = write_byte_value(fd, address, 2, write_data);
-		RELEASE_DATA(write_data.data);
-	}
+	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
+	int write_len = 2;
+	byte_array_info write_data = { 0 };
+	write_data.data = (byte*)malloc(write_len);
+	memset(write_data.data, 0, write_len);
+	write_data.length = write_len;
+
+	short2bytes(htons(val), write_data.data);
+	ret = write_byte_value(fd, address, 2, write_data);
+	RELEASE_DATA(write_data.data);
 	return ret;
 }
 
 s7_error_code_e s7_write_ushort(int fd, const char* address, ushort val)
 {
-	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
-	if (fd > 0 && address != NULL)
-	{
-		int write_len = 2;
-		byte_array_info write_data = { 0 };
-		write_data.data = (byte*)malloc(write_len);
-		memset(write_data.data, 0, write_len);
-		write_data.length = write_len;
+	if (fd <= 0 || address == NULL || strlen(address) == 0)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
 
-		ushort2bytes(htons(val), write_data.data);
-		ret = write_byte_value(fd, address, 2, write_data);
-		RELEASE_DATA(write_data.data);
-	}
+	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
+	int write_len = 2;
+	byte_array_info write_data = { 0 };
+	write_data.data = (byte*)malloc(write_len);
+	memset(write_data.data, 0, write_len);
+	write_data.length = write_len;
+
+	ushort2bytes(htons(val), write_data.data);
+	ret = write_byte_value(fd, address, 2, write_data);
+	RELEASE_DATA(write_data.data);
 	return ret;
 }
 
 s7_error_code_e s7_write_int32(int fd, const char* address, int32 val)
 {
-	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
-	if (fd > 0 && address != NULL)
-	{
-		int write_len = 4;
-		byte_array_info write_data;
-		write_data.data = (byte*)malloc(write_len);
-		memset(write_data.data, 0, write_len);
-		write_data.length = write_len;
+	if (fd <= 0 || address == NULL || strlen(address) == 0)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
 
-		int2bytes(htonl(val), write_data.data);
-		ret = write_byte_value(fd, address, 4, write_data);
-		RELEASE_DATA(write_data.data);
-	}
+	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
+	int write_len = 4;
+	byte_array_info write_data = { 0 };
+	write_data.data = (byte*)malloc(write_len);
+	memset(write_data.data, 0, write_len);
+	write_data.length = write_len;
+
+	int2bytes(htonl(val), write_data.data);
+	ret = write_byte_value(fd, address, 4, write_data);
+	RELEASE_DATA(write_data.data);
 	return ret;
 }
 
 s7_error_code_e s7_write_uint32(int fd, const char* address, uint32 val)
 {
-	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
-	if (fd > 0 && address != NULL)
-	{
-		int write_len = 4;
-		byte_array_info write_data;
-		write_data.data = (byte*)malloc(write_len);
-		memset(write_data.data, 0, write_len);
-		write_data.length = write_len;
+	if (fd <= 0 || address == NULL || strlen(address) == 0)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
 
-		uint2bytes(htonl(val), write_data.data);
-		ret = write_byte_value(fd, address, 4, write_data);
-		RELEASE_DATA(write_data.data);
-	}
+	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
+	int write_len = 4;
+	byte_array_info write_data = { 0 };
+	write_data.data = (byte*)malloc(write_len);
+	memset(write_data.data, 0, write_len);
+	write_data.length = write_len;
+
+	uint2bytes(htonl(val), write_data.data);
+	ret = write_byte_value(fd, address, 4, write_data);
+	RELEASE_DATA(write_data.data);
 	return ret;
 }
 
 s7_error_code_e s7_write_int64(int fd, const char* address, int64 val)
 {
-	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
-	if (fd > 0 && address != NULL)
-	{
-		int write_len = 8;
-		byte_array_info write_data;
-		write_data.data = (byte*)malloc(write_len);
-		memset(write_data.data, 0, write_len);
-		write_data.length = write_len;
+	if (fd <= 0 || address == NULL || strlen(address) == 0)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
 
-		bigInt2bytes(htonll_(val), write_data.data);
-		ret = write_byte_value(fd, address, 8, write_data);
-		RELEASE_DATA(write_data.data);
-	}
+	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
+	int write_len = 8;
+	byte_array_info write_data = { 0 };
+	write_data.data = (byte*)malloc(write_len);
+	memset(write_data.data, 0, write_len);
+	write_data.length = write_len;
+
+	bigInt2bytes(htonll_(val), write_data.data);
+	ret = write_byte_value(fd, address, 8, write_data);
+	RELEASE_DATA(write_data.data);
 	return ret;
 }
 
 s7_error_code_e s7_write_uint64(int fd, const char* address, uint64 val)
 {
-	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
-	if (fd > 0 && address != NULL)
-	{
-		int write_len = 8;
-		byte_array_info write_data;
-		write_data.data = (byte*)malloc(write_len);
-		memset(write_data.data, 0, write_len);
-		write_data.length = write_len;
+	if (fd <= 0 || address == NULL || strlen(address) == 0)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
 
-		ubigInt2bytes(htonll_(val), write_data.data);
-		ret = write_byte_value(fd, address, 8, write_data);
-		RELEASE_DATA(write_data.data);
-	}
+	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
+	int write_len = 8;
+	byte_array_info write_data = { 0 };
+	write_data.data = (byte*)malloc(write_len);
+	memset(write_data.data, 0, write_len);
+	write_data.length = write_len;
+
+	ubigInt2bytes(htonll_(val), write_data.data);
+	ret = write_byte_value(fd, address, 8, write_data);
+	RELEASE_DATA(write_data.data);
 	return ret;
 }
 
 s7_error_code_e s7_write_float(int fd, const char* address, float val)
 {
-	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
-	if (fd > 0 && address != NULL)
-	{
-		int write_len = 4;
-		byte_array_info write_data;
-		write_data.data = (byte*)malloc(write_len);
-		memset(write_data.data, 0, write_len);
-		write_data.length = write_len;
+	if (fd <= 0 || address == NULL || strlen(address) == 0)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
 
-		uint2bytes(htonf_(val), write_data.data);
-		ret = write_byte_value(fd, address, 4, write_data);
-		RELEASE_DATA(write_data.data);
-	}
+	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
+	int write_len = 4;
+	byte_array_info write_data = { 0 };
+	write_data.data = (byte*)malloc(write_len);
+	memset(write_data.data, 0, write_len);
+	write_data.length = write_len;
+
+	uint2bytes(htonf_(val), write_data.data);
+	ret = write_byte_value(fd, address, 4, write_data);
+	RELEASE_DATA(write_data.data);
 	return ret;
 }
 
 s7_error_code_e s7_write_double(int fd, const char* address, double val)
 {
-	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
-	if (fd > 0 && address != NULL)
-	{
-		int write_len = 8;
-		byte_array_info write_data;
-		write_data.data = (byte*)malloc(write_len);
-		memset(write_data.data, 0, write_len);
-		write_data.length = write_len;
+	if (fd <= 0 || address == NULL || strlen(address) == 0)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
 
-		bigInt2bytes(htond_(val), write_data.data);
-		ret = write_byte_value(fd, address, 8, write_data);
-		RELEASE_DATA(write_data.data);
-	}
+	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
+	int write_len = 8;
+	byte_array_info write_data = { 0 };
+	write_data.data = (byte*)malloc(write_len);
+	memset(write_data.data, 0, write_len);
+	write_data.length = write_len;
+
+	bigInt2bytes(htond_(val), write_data.data);
+	ret = write_byte_value(fd, address, 8, write_data);
+	RELEASE_DATA(write_data.data);
 	return ret;
 }
 
 s7_error_code_e s7_write_string(int fd, const char* address, int length, const char* val)
 {
-	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
-	if (fd > 0 && address != NULL && val != NULL)
-	{
-		int write_len = (length % 2) == 1 ? length + 1 : length;
-		byte_array_info write_data;
-		write_data.data = (byte*)malloc(write_len);
-		memset(write_data.data, 0, write_len);
-		memcpy(write_data.data, val, length);
-		write_data.length = write_len;
+	if (fd <= 0 || address == NULL || strlen(address) == 0 || val == NULL)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
 
-		ret = write_byte_value(fd, address, write_len, write_data);
-		RELEASE_DATA(write_data.data);
-	}
+	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
+	int write_len = (length % 2) == 1 ? length + 1 : length;
+	byte_array_info write_data = { 0 };
+	write_data.data = (byte*)malloc(write_len);
+	memset(write_data.data, 0, write_len);
+	memcpy(write_data.data, val, length);
+	write_data.length = write_len;
+
+	ret = write_byte_value(fd, address, write_len, write_data);
+	RELEASE_DATA(write_data.data);
 	return ret;
 }
 

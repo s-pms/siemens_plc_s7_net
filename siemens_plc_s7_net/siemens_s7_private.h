@@ -84,7 +84,7 @@ byte g_plc_rack = 0x00;
 byte g_plc_slot = 0x00;
 int g_pdu_length = 0;
 
-int s7_read_response(int fd, byte_array_info* response);
+s7_error_code_e s7_read_response(int fd, byte_array_info* response, int* read_count);
 
 void s7_initialization(siemens_plc_types_e plc, char* ip);
 
@@ -98,11 +98,6 @@ s7_error_code_e write_byte_value(int fd, const char* address, int length, byte_a
 s7_error_code_e write_address_data(int fd, siemens_s7_address_data address_data, byte_array_info in_bytes);
 
 //////////////////////////////////////////////////////////////////////////
-bool s7_remote_run(int fd);
-bool s7_remote_stop(int fd);
-bool s7_remote_reset(int fd);
-char* s7_read_plc_type(int fd);
-
 bool initialization_on_connect(int fd);
 
 #endif//__H_SIEMENS_S7_PRIVATE_H__

@@ -21,7 +21,7 @@ typedef enum _tag_siemens_plc_type {
 } siemens_plc_types_e;
 
 typedef enum _tag_s7_error_code {
-	S7_ERROR_CODE_OK = 0,							// 成功
+	S7_ERROR_CODE_SUCCESS = 0,							// 成功
 	S7_ERROR_CODE_FAILED = 1,						// 错误
 	S7_ERROR_CODE_FW_ERROR,							// 发生了异常，具体信息查找Fetch/Write协议文档
 	S7_ERROR_CODE_ERROR_0006,						// 当前操作的数据类型不支持
@@ -32,6 +32,12 @@ typedef enum _tag_s7_error_code {
 	S7_ERROR_CODE_DATA_LENGTH_CHECK_FAILED,			// 数据块长度校验失败，请检查是否开启put/get以及关闭db块优化
 	S7_ERROR_CODE_READ_LENGTH_OVER_PLC_ASSIGN,		// 读取的数据范围超出了PLC的设定
 	S7_ERROR_CODE_READ_LENGTH_CANNT_LARAGE_THAN_19,	// 读取的数组数量不允许大于19
+	S7_ERROR_CODE_MALLOC_FAILED,					// 内存分配错误
+	S7_ERROR_CODE_INVALID_PARAMETER,				// 参数错误
+	S7_ERROR_CODE_PARSE_ADDRESS_FAILED,				// 地址解析错误
+	S7_ERROR_CODE_BUILD_CORE_CMD_FAILED,			// 构建核心命令错误
+	S7_ERROR_CODE_SOCKET_SEND_FAILED,				// 发送命令错误
+	S7_ERROR_CODE_RESPONSE_HEADER_FAILED,			// 响应包头不完整错误
 	S7_ERROR_CODE_UNKOWN = 99,						// 未知错误
 } s7_error_code_e;
 

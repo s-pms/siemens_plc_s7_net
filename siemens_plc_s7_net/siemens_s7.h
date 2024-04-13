@@ -54,9 +54,9 @@ s7_error_code_e s7_write_double(int fd, const char* address, double val);
 s7_error_code_e s7_write_string(int fd, const char* address, int length, const char* val);
 
 //
-bool s7_remote_run(int fd);
-bool s7_remote_stop(int fd);
-bool s7_remote_reset(int fd);
-char* s7_read_plc_type(int fd);
+s7_error_code_e s7_remote_run(int fd);
+s7_error_code_e s7_remote_stop(int fd);
+s7_error_code_e s7_remote_reset(int fd);
+s7_error_code_e s7_read_plc_type(int fd, char** type);
 
 #endif //__H_SIEMENS_S7_H__

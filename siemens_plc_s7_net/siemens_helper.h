@@ -13,5 +13,6 @@ s7_error_code_e s7_analysis_write(byte_array_info response);
 
 bool read_data_from_core_server(int fd, byte_array_info send, byte_array_info* ret);
 bool send_data_to_core_server(int fd, byte_array_info send);
+bool try_send_data_to_server(int fd, byte_array_info* in_bytes, int* real_sends);
 
 #endif//__H_SIEMENS_HELPER_H__

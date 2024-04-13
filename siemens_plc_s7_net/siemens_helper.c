@@ -307,11 +307,11 @@ byte_array_info build_write_bit_command(siemens_s7_address_data address, bool va
 /// <returns></returns>
 s7_error_code_e s7_analysis_read_bit(byte_array_info response, byte_array_info* ret)
 {
-	s7_error_code_e ret_code = S7_ERROR_CODE_OK;
+	s7_error_code_e ret_code = S7_ERROR_CODE_SUCCESS;
 	if (response.length == 0)
 		return S7_ERROR_CODE_FAILED;
 
-	if (response.length >= 21 && response.data[20] == 1)
+	if (response.length >= MIN_HEADER_SIZE && response.data[20] == 1)
 	{
 		byte buffer[1] = { 0 };
 		if (22 < response.length)
@@ -353,7 +353,7 @@ s7_error_code_e s7_analysis_read_bit(byte_array_info response, byte_array_info* 
 
 s7_error_code_e s7_analysis_read_byte(byte_array_info response, byte_array_info* ret)
 {
-	s7_error_code_e ret_code = S7_ERROR_CODE_OK;
+	s7_error_code_e ret_code = S7_ERROR_CODE_SUCCESS;
 	if (response.length == 0)
 		return S7_ERROR_CODE_FAILED;
 
@@ -361,7 +361,7 @@ s7_error_code_e s7_analysis_read_byte(byte_array_info response, byte_array_info*
 	byte buffer[1024] = { 0 };
 	int buffer_length = 0;
 	int temp_index = 0;
-	if (response.length >= 21)
+	if (response.length >= MIN_HEADER_SIZE)
 	{
 		for (i = 21; i < response.length - 1; i++)
 		{
@@ -411,20 +411,20 @@ s7_error_code_e s7_analysis_read_byte(byte_array_info response, byte_array_info*
 	}
 	else
 	{
-		ret_code = S7_ERROR_CODE_UNKOWN;
+		ret_code = S7_ERROR_CODE_RESPONSE_HEADER_FAILED;
 	}
 	return ret_code;
 }
 
 s7_error_code_e s7_analysis_write(byte_array_info response)
 {
-	s7_error_code_e ret_code = S7_ERROR_CODE_OK;
+	s7_error_code_e ret_code = S7_ERROR_CODE_SUCCESS;
 	if (response.length == 0)
 		return S7_ERROR_CODE_FAILED;
 
 	byte buffer[1024] = { 0 };
 	int buffer_length = 0;
-	if (response.length >= 22)
+	if (response.length > 21)
 	{
 		byte code = response.data[21];
 		if (code != 0xFF)
@@ -432,7 +432,7 @@ s7_error_code_e s7_analysis_write(byte_array_info response)
 	}
 	else
 	{
-		ret_code = S7_ERROR_CODE_UNKOWN;
+		ret_code = S7_ERROR_CODE_RESPONSE_HEADER_FAILED;
 	}
 	return ret_code;
 }
@@ -472,4 +472,31 @@ bool send_data_to_core_server(int fd, byte_array_info send)
 		is_ok = true;
 	}
 	return is_ok;
+}
+
+bool try_send_data_to_server(int fd, byte_array_info* in_bytes, int* real_sends)
+{
+	if (fd < 0 || in_bytes == NULL)
+		return false;
+
+	int temp_real_sends = 0;
+	if (real_sends == NULL)
+		real_sends = &temp_real_sends;
+
+	int retry_times = 0;
+	while (retry_times < MAX_RETRY_TIMES) {
+		int need_send = in_bytes->length;
+		*real_sends = socket_send_data(fd, in_bytes->data, need_send);
+		if (*real_sends == need_send) {
+			break;
+		}
+		// 处理发送失败的逻辑，例如重试或记录错误
+		retry_times++;
+	}
+
+	if (retry_times >= MAX_RETRY_TIMES) {
+		return false;
+	}
+
+	return true;
 }
