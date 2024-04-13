@@ -1,275 +1,191 @@
-[English README](README_EN.md)
+# Overall Program Introduction
 
-# 程序整体介绍
+- Project Name: siemens_plc_s7_net
+- Development Language: C
+- Supported Operating Systems: Windows/Linux
+- Test Device: S1200
+Currently implemented functionality includes a Siemens PLC communication class utilizing the S7 protocol. Configuration of the Ethernet module on the PLC side is required beforehand.
 
-- 项目名称：siemens_plc_s7_net
-- 开发语言：C语言
-- 支持操作系统：windows/linux
-- 测试设备：S1200
-
-目前实现功能，实现西门子PLC通讯类，采用S7协议实现，需要在PLC侧先的以太网模块先进行配置。
-
-## 头文件
+## Header Files
 
 ```c
-#include "siemens_s7.h"  //协议提供方法接口
-#include "typedef.h"   //部分类型宏定义
+#include "siemens_s7.h"  // Provides method interfaces for the protocol
+#include "typedef.h"   // Contains some macro definitions for types
 ```
 
-## 西门子PLC地址说明
+## Siemens PLC Address Description
 
-### 连接属性
+### Connection Attributes
 
-- port: 端口号，通常为102
-- plc_type: plc型号，S200、S200Smart、S300、S400、S1200、S1500
+- port: Port number, typically 102
+- plc_type: PLC model, such as S200, S200Smart, S300, S400, S1200, S1500
 
-### PLC地址分类
+### PLC Address Classification
 
-类型的代号值（软元件代码，用于区分软元件类型，如：D，R）
+Code values for types (soft element codes used to distinguish soft element types, e.g., D, R)
 
-| 序号  | 描述           | 地址类型 |
+| Serial No.  | Description         | Address Type |
 | :---: | :------------- | -------- |
-|   1   | 中间继电器     | M        |
-|   2   | 输入继电器     | I        |
-|   3   | 输出继电器Q    | Q        |
-|   4   | DB块寄存器DB   | DB       |
-|   5   | V寄存器        | V        |
-|   6   | 定时器的值     | T        |
-|   7   | 计数器的值     | C        |
-|   8   | 智能输入寄存器 | AI       |
-|   9   | 智能输出寄存器 | AQ       |
+|   1   | Intermediate relay        | M        |
+|   2   | Input relay               | I        |
+|   3   | Output relay (Q)          | Q        |
+|   4   | DB block register (DB)    | DB       |
+|   5   | V register                | V        |
+|   6   | Timer value               | T        |
+|   7   | Counter value             | C        |
+|   8   | Intelligent input relay   | AI       |
+|   9   | Intelligent output relay  | AQ       |
 
-## 实现方法
+## Implemented Methods
 
-### 1.连接PLC设备
+### 1. Connecting to PLC Devices
 
 ```c
 bool s7_connect(char* ip_addr, int port, siemens_plc_types_e plc, int* fd);
-/* 连接PLC设备
- * 参数:
- *   ip_addr: PLC的IP地址
- *   port: PLC的端口号
- *   plc: PLC的型号
- *   fd: 连接成功后返回的文件描述符
- * 返回值:
- *   连接成功返回true，失败返回false
+/* Connects to a PLC device
+ * Parameters:
+ *   ip_addr: The IP address of the PLC
+ *   port: The port number of the PLC
+ *   plc: The model of the PLC
+ *   fd: Upon successful connection, returns the file descriptor
+ * Return Value:
+ *   Returns true if the connection succeeds, false otherwise
  */
 
 bool s7_disconnect(int fd);
-/* 断开与PLC的连接
- * 参数:
- *   fd: 连接PLC的文件描述符
- * 返回值:
- *   成功返回true，失败返回false
+/* Disconnects from the PLC
+ * Parameters:
+ *   fd: The file descriptor used to connect to the PLC
+ * Return Value:
+ *   Returns true if the disconnection succeeds, false otherwise
  */
 
 byte get_plc_slot();
-/* 获取PLC的槽号
- * 返回值:
- *   PLC的槽号
+/* Retrieves the slot number of the PLC
+ * Return Value:
+ *   Returns the slot number of the PLC
  */
 
 void set_plc_slot(byte slot);
-/* 设置PLC的槽号
- * 参数:
- *   slot: 要设置的槽号
+/* Sets the slot number of the PLC
+ * Parameters:
+ *   slot: The desired slot number to set
  */
 
 byte get_plc_rack();
-/* 获取PLC的机架号
- * 返回值:
- *   PLC的机架号
+/* Retrieves the rack number of the PLC
+ * Return Value:
+ *   Returns the rack number of the PLC
  */
 
 void set_plc_rack(byte rack);
-/* 设置PLC的机架号
- * 参数:
- *   rack: 要设置的机架号
+/* Sets the rack number of the PLC
+ * Parameters:
+ *   rack: The desired rack number to set
  */
 
 byte get_plc_connection_type();
-/* 获取PLC的连接类型
- * 返回值:
- *   PLC的连接类型
+/* Retrieves the connection type of the PLC
+ * Return Value:
+ *   Returns the connection type of the PLC
  */
 
 void set_plc_connection_type(byte rack);
-/* 设置PLC的连接类型
- * 参数:
- *   rack: 要设置的连接类型
+/* Sets the connection type of the PLC
+ * Parameters:
+ *   rack: The desired connection type to set
  */
 
 int get_plc_local_TSAP();
-/* 获取PLC的本地TSAP
- * 返回值:
- *   PLC的本地TSAP
+/* Retrieves the local TSAP of the PLC
+ * Return Value:
+ *   Returns the local TSAP of the PLC
  */
 
 void set_plc_local_TSAP(int tasp);
-/* 设置PLC的本地TSAP
- * 参数:
- *   tasp: 要设置的本地TSAP
+/* Sets the local TSAP of the PLC
+ * Parameters:
+ *   tasp: The desired local TSAP to set
  */
 
 int get_plc_dest_TSAP();
-/* 获取PLC的目标TSAP
- * 返回值:
- *   PLC的目标TSAP
+/* Retrieves the destination TSAP of the PLC
+ * Return Value:
+ *   Returns the destination TSAP of the PLC
  */
 
 void set_plc_dest_TSAP(int tasp);
-/* 设置PLC的目标TSAP
- * 参数:
- *   tasp: 要设置的目标TSAP
+/* Sets the destination TSAP of the PLC
+ * Parameters:
+ *   tasp: The desired destination TSAP to set
  */
 
 int get_plc_PDU_length();
-/* 获取PLC的PDU长度
- * 返回值:
- *   PLC的PDU长度
+/* Retrieves the PDU length of the PLC
+ * Return Value:
+ *   Returns the PDU length of the PLC
  */
 ```
 
-### 2.读取数据
+### 2. Reading Data
 
 ```c
-7_error_code_e s7_read_bool(int fd, const char* address, bool* val);
-/* 从PLC读取布尔值数据
- * 参数:
- *   fd: 连接PLC的文件描述符
- *   address: 数据在PLC中的地址
- *   val: 用于接收读取到的数据的指针
- * 返回值:
- *   读取成功返回S7_ERROR_CODE_SUCCESS，否则返回相应的错误码
+s7_error_code_e s7_read_bool(int fd, const char* address, bool* val);
+/* Reads a boolean value from the PLC
+ * Parameters:
+ *   fd: The file descriptor for the PLC connection
+ *   address: The address of the data in the PLC
+ *   val: Pointer to receive the read data
+ * Return Value:
+ *   Returns S7_ERROR_CODE_SUCCESS if the read operation succeeds; otherwise, returns the corresponding error code
  */
 
-s7_error_code_e s7_read_byte(int fd, const char* address, byte* val);
-/* 从PLC读取字节数据
- * 参数同上，此处省略...
- */
-
-s7_error_code_e s7_read_short(int fd, const char* address, short* val);
-/* 从PLC读取短整型数据
- * 参数同上，此处省略...
- */
-
-s7_error_code_e s7_read_ushort(int fd, const char* address, ushort* val);
-/* 从PLC读取无符号短整型数据
- * 参数同上，此处省略...
- */
-
-s7_error_code_e s7_read_int32(int fd, const char* address, int32* val);
-/* 从PLC读取32位整型数据
- * 参数同上，此处省略...
- */
-
-s7_error_code_e s7_read_uint32(int fd, const char* address, uint32* val);
-/* 从PLC读取无符号32位整型数据
- * 参数同上，此处省略...
- */
-
-s7_error_code_e s7_read_int64(int fd, const char* address, int64* val);
-/* 从PLC读取64位整型数据
- * 参数同上，此处省略...
- */
-
-s7_error_code_e s7_read_uint64(int fd, const char* address, uint64* val);
-/* 从PLC读取无符号64位整型数据
- * 参数同上，此处省略...
- */
-
-s7_error_code_e s7_read_float(int fd, const char* address, float* val);
-/* 从PLC读取浮点型数据
- * 参数同上，此处省略...
- */
-
-s7_error_code_e s7_read_double(int fd, const char* address, double* val);
-/* 从PLC读取双精度浮点型数据
- * 参数同上，此处省略...
- */
+// Similar function declarations for reading other data types (e.g., byte, short, etc.) are omitted for brevity
 
 s7_error_code_e s7_read_string(int fd, const char* address, int length, char** val); 
-/* 从PLC读取字符串数据，需要手动释放返回的字符串内存
- * 参数:
- *   fd: 连接PLC的文件描述符
- *   address: 数据在PLC中的地址
- *   length: 要读取的字符串长度
- *   val: 用于接收读取到的字符串的指针，使用后需释放内存
- * 返回值:
- *   读取成功返回S7_ERROR_CODE_SUCCESS，否则返回相应的错误码
+/* Reads a string from the PLC. The memory for the returned string must be manually freed.
+ * Parameters:
+ *   fd: The file descriptor for the PLC connection
+ *   address: The address of the data in the PLC
+ *   length: The length of the string to read
+ *   val: Pointer to receive the read string; memory should be freed after use
+ * Return Value:
+ *   Returns S7_ERROR_CODE_SUCCESS if the read operation succeeds; otherwise, returns the corresponding error code
  */
 ```
 
-### 3.写入数据
+### 3. Writing Data
 
 ```c
 s7_error_code_e s7_write_bool(int fd, const char* address, bool val);
-/* 向PLC写入布尔值数据
- * 参数同上，此处省略...
+/* Writes a boolean value to the PLC
+ * Parameters:
+ *   fd: The file descriptor for the PLC connection
+ *   address: The address of the data in the PLC
+ *   val: The value to write
+ * Return Value:
+ *   Returns S7_ERROR_CODE_SUCCESS if the write operation succeeds; otherwise, returns the corresponding error code
  */
 
-s7_error_code_e s7_write_byte(int fd, const char* address, byte val);
-/* 向PLC写入字节数据
- * 参数同上，此处省略...
- */
-
-s7_error_code_e s7_write_short(int fd, const char* address, short val);
-/* 向PLC写入短整型数据
- * 参数同上，此处省略...
- */
-
-s7_error_code_e s7_write_ushort(int fd, const char* address, ushort val);
-/* 向PLC写入无符号短整型数据
- * 参数同上，此处省略...
- */
-
-s7_error_code_e s7_write_int32(int fd, const char* address, int32 val);
-/* 向PLC写入32位整型数据
- * 参数同上，此处省略...
- */
-
-s7_error_code_e s7_write_uint32(int fd, const char* address, uint32 val);
-/* 向PLC写入无符号32位整型数据
- * 参数同上，此处省略...
- */
-
-s7_error_code_e s7_write_int64(int fd, const char* address, int64 val);
-/* 向PLC写入64位整型数据
- * 参数同上，此处省略...
- */
-
-s7_error_code_e s7_write_uint64(int fd, const char* address, uint64 val);
-/* 向PLC写入无符号64位整型数据
- * 参数同上，此处省略...
- */
-
-s7_error_code_e s7_write_float(int fd, const char* address, float val);
-/* 向PLC写入浮点型数据
- * 参数同上，此处省略...
- */
-
-s7_error_code_e s7_write_double(int fd, const char* address, double val);
-/* 向PLC写入双精度浮点型数据
- * 参数同上，此处省略...
- */
+// Similar function declarations for writing other data types (e.g., byte, short, etc.) are omitted for brevity
 
 s7_error_code_e s7_write_string(int fd, const char* address, int length, const char* val);
-/* 向PLC写入字符串数据
- * 参数:
- *   fd: 连接PLC的文件描述符
- *   address: 数据在PLC中的地址
- *   length: 要写入的字符串长度
- *   val: 要写入的字符串
- * 返回值:
- *   写入成功返回S7_ERROR_CODE_SUCCESS，否则返回相应的错误码
+/* Writes a string to the PLC
+ * Parameters:
+ *   fd: The file descriptor for the PLC connection
+ *   address: The address of the data in the PLC
+ *   length: The length of the string to write
+ *   val: The string to write
+ * Return Value:
+ *   Returns S7_ERROR_CODE_SUCCESS if the write operation succeeds; otherwise, returns the corresponding error code
  */
 ```
 
-## 使用样例
+## Usage Example
 
-完整样例参见代码中**main.c**文件，如下提供主要代码和使用方法：
+For the complete example, refer to the main.c file in the code. Below is the main code and usage method:
 
-*读取地址，格式为"**M100**","**DB100**"
+Read addresses in the format "M100", "DB100"
 
 ```c
 #ifdef _WIN32
