@@ -6,34 +6,36 @@
 
 #define BUFFER_SIZE 1024
 
+// 提取公共的命令头部构建逻辑
+void build_command_header(byte* command, ushort command_len, byte command_type) {
+	command[0] = 0x03;
+	command[1] = 0x00;
+	command[2] = (byte)(command_len / 256);
+	command[3] = (byte)(command_len % 256);
+	command[4] = 0x02;
+	command[5] = 0xF0;
+	command[6] = 0x80;
+	command[7] = 0x32;
+	command[8] = 0x01;
+	command[9] = 0x00;
+	command[10] = 0x00;
+	command[11] = 0x00;
+	command[12] = 0x01;
+	command[13] = (byte)((command_len - 17) / 256);
+	command[14] = (byte)((command_len - 17) % 256);
+	command[15] = 0x00;
+	command[16] = 0x00;
+	command[17] = command_type;
+	command[18] = 0x01;
+}
+
 // 从地址构造核心报文
 byte_array_info build_read_byte_command(siemens_s7_address_data address)
 {
 	const ushort command_len = 19 + 12;	// head + block
 	byte* command = (byte*)malloc(command_len);
+	build_command_header(command, command_len, 0x04);
 
-	command[0] = 0x03;												// 报文头 -> Head
-	command[1] = 0x00;
-	command[2] = (byte)(command_len / 256);							// 长度 -> Length
-	command[3] = (byte)(command_len % 256);
-	command[4] = 0x02;												// 固定 -> Fixed
-	command[5] = 0xF0;
-	command[6] = 0x80;
-	command[7] = 0x32;                                              // 协议标识 -> Protocol identification
-	command[8] = 0x01;                                              // 命令：发 -> Command: Send
-	command[9] = 0x00;                                              // redundancy identification (reserved): 0x0000;
-	command[10] = 0x00;
-	command[11] = 0x00;                                             // protocol data unit reference; it’s increased by request event;
-	command[12] = 0x01;
-	command[13] = (byte)((command_len - 17) / 256);					// 参数命令数据总长度 -> Parameter command Data total length
-	command[14] = (byte)((command_len - 17) % 256);
-	command[15] = 0x00;                                              // 读取内部数据时为00，读取CPU型号为Data数据长度 -> Read internal data is 00, read CPU model is data length
-	command[16] = 0x00;
-	// =====================================================================================
-	command[17] = 0x04;                                              // 读写指令，04读，05写 -> Read-write instruction, 04 read, 05 Write
-	command[18] = 0x01;												 // 读取数据块个数 -> Number of data blocks read
-
-	//===========================================================================================
 	// 指定有效值类型 -> Specify a valid value type
 	command[19] = 0x12;
 	// 接下来本次地址访问长度 -> The next time the address access length
@@ -85,37 +87,8 @@ byte_array_info build_read_bit_command(siemens_s7_address_data address)
 {
 	const ushort command_len = 19 + 12;	// head + block
 	byte* command = (byte*)malloc(command_len);
+	build_command_header(command, command_len, 0x04);
 
-	command[0] = 0x03;
-	command[1] = 0x00;
-	// 长度 -> Length
-	command[2] = (byte)(command_len / 256);
-	command[3] = (byte)(command_len % 256);
-	// 固定 -> Fixed
-	command[4] = 0x02;
-	command[5] = 0xF0;
-	command[6] = 0x80;
-	command[7] = 0x32;
-	// 命令：发 -> command to send
-	command[8] = 0x01;
-	// 标识序列号
-	command[9] = 0x00;
-	command[10] = 0x00;
-	command[11] = 0x00;
-	command[12] = 0x01;
-	// 命令数据总长度 -> Identification serial Number
-	command[13] = (byte)((command_len - 17) / 256);
-	command[14] = (byte)((command_len - 17) % 256);
-
-	command[15] = 0x00;
-	command[16] = 0x00;
-
-	// 命令起始符 -> Command start character
-	command[17] = 0x04;
-	// 读取数据块个数 -> Number of data blocks read
-	command[18] = 0x01;
-
-	//===========================================================================================
 	// 读取地址的前缀 -> Read the prefix of the address
 	command[19] = 0x12;
 	command[20] = 0x0A;
@@ -149,26 +122,8 @@ byte_array_info build_write_byte_command(siemens_s7_address_data address, byte_a
 
 	const ushort command_len = 35 + val_len;
 	byte* command = (byte*)malloc(command_len);
-	command[0] = 0x03;
-	command[1] = 0x00;
-	// 长度 -> Length
-	command[2] = (byte)((command_len) / 256);
-	command[3] = (byte)((command_len) % 256);
-	// 固定 -> Fixed
-	command[4] = 0x02;
-	command[5] = 0xF0;
-	command[6] = 0x80;
-	command[7] = 0x32;
-	// 命令 发 -> command to send
-	command[8] = 0x01;
-	// 标识序列号 -> Identification serial Number
-	command[9] = 0x00;
-	command[10] = 0x00;
-	command[11] = 0x00;
-	command[12] = 0x01;
-	// 固定 -> Fixed
-	command[13] = 0x00;
-	command[14] = 0x0E;
+	build_command_header(command, command_len, 0x05);
+
 	// 写入长度+4 -> Write Length +4
 	command[15] = (byte)((4 + val_len) / 256);
 	command[16] = (byte)((4 + val_len) % 256);
@@ -231,27 +186,8 @@ byte_array_info build_write_bit_command(siemens_s7_address_data address, bool va
 
 	const ushort command_len = 35 + buffer_len;
 	byte* command = (byte*)malloc(command_len);
+	build_command_header(command, command_len, 0x05);
 
-	command[0] = 0x03;
-	command[1] = 0x00;
-	// 长度 -> length
-	command[2] = (byte)((command_len) / 256);
-	command[3] = (byte)((command_len) % 256);
-	// 固定 -> fixed
-	command[4] = 0x02;
-	command[5] = 0xF0;
-	command[6] = 0x80;
-	command[7] = 0x32;
-	// 命令 发 -> command to send
-	command[8] = 0x01;
-	// 标识序列号 -> Identification serial Number
-	command[9] = 0x00;
-	command[10] = 0x00;
-	command[11] = 0x00;
-	command[12] = 0x01;
-	// 固定 -> fixed
-	command[13] = 0x00;
-	command[14] = 0x0E;
 	// 写入长度+4 -> Write Length +4
 	command[15] = (byte)((4 + buffer_len) / 256);
 	command[16] = (byte)((4 + buffer_len) % 256);

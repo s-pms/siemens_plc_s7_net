@@ -124,7 +124,7 @@ int main(int argc, char** argv)
 
 			//////////////////////////////////////////////////////////////////////////
 			int64 w_i64_val = 333334554;
-			strcpy(address, "DB1.DBW70");
+			strcpy(address, "DB1.DBD70");
 			ret = s7_write_int64(fd, address, w_i64_val);
 			printf("Write\t %s \tuint64:\t %lld, \tret: %d\n", address, w_i64_val, ret);
 			GET_RESULT(ret);
@@ -136,7 +136,7 @@ int main(int argc, char** argv)
 
 			//////////////////////////////////////////////////////////////////////////
 			uint64 w_ui64_val = 4333334554;
-			strcpy(address, "DB1.DBW70");
+			strcpy(address, "DB1.DBD70");
 			ret = s7_write_uint64(fd, address, w_ui64_val);
 			printf("Write\t %s \tuint64:\t %lld, \tret: %d\n", address, w_ui64_val, ret);
 			GET_RESULT(ret);
@@ -148,7 +148,7 @@ int main(int argc, char** argv)
 
 			//////////////////////////////////////////////////////////////////////////
 			float w_f_val = 32.454f;
-			strcpy(address, "DB1.DBW70");
+			strcpy(address, "DB1.DBD70");
 			ret = s7_write_float(fd, address, w_f_val);
 			printf("Write\t %s \tfloat:\t %f, \tret: %d\n", address, w_f_val, ret);
 			GET_RESULT(ret);
