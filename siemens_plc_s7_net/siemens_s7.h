@@ -12,7 +12,7 @@ byte get_plc_rack();
 void set_plc_rack(byte rack);
 
 byte get_plc_connection_type();
-void set_plc_connection_type(byte rack);
+void set_plc_connection_type(byte type);
 
 int get_plc_local_TSAP();
 void set_plc_local_TSAP(int tasp);
