@@ -185,7 +185,7 @@ int main(int argc, char** argv)
 #ifdef _WIN32
 			Sleep(TEST_SLEEP_TIME);
 #else
-			usleep(TEST_SLEEP_TIME* 1000);
+			usleep(TEST_SLEEP_TIME * 1000);
 #endif
 		}
 

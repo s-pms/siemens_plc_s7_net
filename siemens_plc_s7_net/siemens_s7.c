@@ -90,47 +90,34 @@ bool s7_disconnect(int fd)
 }
 
 //////////////////////////////////////////////////////////////////////////
-s7_error_code_e read_bit_value(int fd, const char* address, int length, byte_array_info* out_bytes)
+s7_error_code_e s7_read_response(int fd, byte_array_info* response, int* read_count)
 {
-	if (fd < 0 || address == NULL || out_bytes == NULL)
+	if (fd <= 0 || read_count == 0 || response == NULL)
 		return S7_ERROR_CODE_INVALID_PARAMETER;
 
-	siemens_s7_address_data address_data;
-	if (!s7_analysis_address(address, length, &address_data))
-		return S7_ERROR_CODE_PARSE_ADDRESS_FAILED;
+	byte* temp = malloc(BUFFER_SIZE); // 动态分配缓冲区
+	if (temp == NULL)
+		return S7_ERROR_CODE_MALLOC_FAILED;
 
-	s7_error_code_e ret = S7_ERROR_CODE_UNKOWN;
-	byte_array_info core_cmd = build_read_bit_command(address_data);
-	if (core_cmd.data == NULL)
-		return S7_ERROR_CODE_BUILD_CORE_CMD_FAILED;
+	memset(temp, 0, BUFFER_SIZE);
+	response->data = temp;
+	response->length = BUFFER_SIZE;
 
-	if (!try_send_data_to_server(fd, &core_cmd, NULL)) {
-		RELEASE_DATA(core_cmd.data);
-		return S7_ERROR_CODE_SOCKET_SEND_FAILED;
+	*read_count = 0;
+	char* ptr = (char*)response->data;
+
+	if (fd <= 0 || response->length <= 0) return -1;
+	*read_count = (int)recv(fd, ptr, response->length, 0);
+
+	if (*read_count < 0) {
+		return S7_ERROR_CODE_FAILED;
 	}
-	RELEASE_DATA(core_cmd.data);
+	response->length = *read_count;
 
-	byte_array_info response = { 0 };
-	int recv_size = 0;
-	ret = s7_read_response(fd, &response, &recv_size);
-	if (ret != S7_ERROR_CODE_SUCCESS)
-	{
-		RELEASE_DATA(response.data);
-		return ret;
-	}
-
-	if (recv_size < MIN_HEADER_SIZE) {
-		RELEASE_DATA(response.data);
-		return S7_ERROR_CODE_RESPONSE_HEADER_FAILED;
-	}
-
-	ret = s7_analysis_read_bit(response, out_bytes);
-	RELEASE_DATA(response.data);
-
-	return ret;
+	return S7_ERROR_CODE_SUCCESS;
 }
 
-s7_error_code_e read_byte_value(int fd, const char* address, int length, byte_array_info* out_bytes)
+s7_error_code_e s7_read_data(int fd, const char* address, int length, byte_array_info* out_bytes, bool is_bit)
 {
 	if (fd <= 0 || address == NULL || length <= 0 || out_bytes == NULL)
 		return S7_ERROR_CODE_INVALID_PARAMETER;
@@ -139,16 +126,8 @@ s7_error_code_e read_byte_value(int fd, const char* address, int length, byte_ar
 	if (!s7_analysis_address(address, length, &address_data))
 		return S7_ERROR_CODE_PARSE_ADDRESS_FAILED;
 
-	return read_address_data(fd, address_data, out_bytes);
-}
-
-s7_error_code_e read_address_data(int fd, siemens_s7_address_data address_data, byte_array_info* out_bytes)
-{
-	if (fd <= 0 || out_bytes == NULL)
-		return S7_ERROR_CODE_INVALID_PARAMETER;
-
 	s7_error_code_e ret = S7_ERROR_CODE_UNKOWN;
-	byte_array_info core_cmd = build_read_byte_command(address_data);
+	byte_array_info core_cmd = is_bit ? build_read_bit_command(address_data) : build_read_byte_command(address_data);
 	if (core_cmd.data == NULL)
 		return S7_ERROR_CODE_BUILD_CORE_CMD_FAILED;
 
@@ -172,54 +151,23 @@ s7_error_code_e read_address_data(int fd, siemens_s7_address_data address_data, 
 		return S7_ERROR_CODE_RESPONSE_HEADER_FAILED;
 	}
 
-	ret = s7_analysis_read_byte(response, out_bytes);
+	ret = is_bit ? s7_analysis_read_bit(response, out_bytes) : s7_analysis_read_byte(response, out_bytes);
 	RELEASE_DATA(response.data);
 
 	return ret;
 }
 
-//////////////////////////////////////////////////////////////////////////
-s7_error_code_e write_bit_value(int fd, const char* address, int length, bool value)
+s7_error_code_e read_bit_value(int fd, const char* address, int length, byte_array_info* out_bytes)
 {
-	if (fd <= 0 || address == NULL)
-		return S7_ERROR_CODE_INVALID_PARAMETER;
-
-	siemens_s7_address_data address_data;
-	if (!s7_analysis_address(address, length, &address_data))
-		return S7_ERROR_CODE_PARSE_ADDRESS_FAILED;
-
-	s7_error_code_e ret = S7_ERROR_CODE_UNKOWN;
-	byte_array_info core_cmd = build_write_bit_command(address_data, value);
-	if (core_cmd.data == NULL)
-		return S7_ERROR_CODE_BUILD_CORE_CMD_FAILED;
-
-	if (!try_send_data_to_server(fd, &core_cmd, NULL)) {
-		RELEASE_DATA(core_cmd.data);
-		return S7_ERROR_CODE_SOCKET_SEND_FAILED;
-	}
-	RELEASE_DATA(core_cmd.data);
-
-	byte_array_info response = { 0 };
-	int recv_size = 0;
-	ret = s7_read_response(fd, &response, &recv_size);
-	if (ret != S7_ERROR_CODE_SUCCESS)
-	{
-		RELEASE_DATA(response.data);
-		return ret;
-	}
-
-	if (recv_size < MIN_HEADER_SIZE) {
-		RELEASE_DATA(response.data);
-		return S7_ERROR_CODE_RESPONSE_HEADER_FAILED;
-	}
-
-	ret = s7_analysis_write(response);
-	RELEASE_DATA(response.data);
-
-	return ret;
+	return s7_read_data(fd, address, length, out_bytes, true);
 }
 
-s7_error_code_e write_byte_value(int fd, const char* address, int length, byte_array_info in_bytes)
+s7_error_code_e read_byte_value(int fd, const char* address, int length, byte_array_info* out_bytes)
+{
+	return s7_read_data(fd, address, length, out_bytes, false);
+}
+
+s7_error_code_e s7_write_data(int fd, const char* address, int length, byte_array_info in_bytes, bool is_bit, bool value)
 {
 	if (fd <= 0 || address == NULL || length <= 0)
 		return S7_ERROR_CODE_INVALID_PARAMETER;
@@ -228,16 +176,8 @@ s7_error_code_e write_byte_value(int fd, const char* address, int length, byte_a
 	if (!s7_analysis_address(address, length, &address_data))
 		return S7_ERROR_CODE_PARSE_ADDRESS_FAILED;
 
-	return write_address_data(fd, address_data, in_bytes);
-}
-
-s7_error_code_e write_address_data(int fd, siemens_s7_address_data address_data, byte_array_info in_bytes)
-{
-	if (fd <= 0)
-		return S7_ERROR_CODE_INVALID_PARAMETER;
-
 	s7_error_code_e ret = S7_ERROR_CODE_UNKOWN;
-	byte_array_info core_cmd = build_write_byte_command(address_data, in_bytes);
+	byte_array_info core_cmd = is_bit ? build_write_bit_command(address_data, value) : build_write_byte_command(address_data, in_bytes);
 	if (core_cmd.data == NULL)
 		return S7_ERROR_CODE_BUILD_CORE_CMD_FAILED;
 
@@ -265,6 +205,17 @@ s7_error_code_e write_address_data(int fd, siemens_s7_address_data address_data,
 	RELEASE_DATA(response.data);
 
 	return ret;
+}
+
+s7_error_code_e write_bit_value(int fd, const char* address, int length, bool value)
+{
+	byte_array_info dummy = { 0 };
+	return s7_write_data(fd, address, length, dummy, true, value);
+}
+
+s7_error_code_e write_byte_value(int fd, const char* address, int length, byte_array_info in_bytes)
+{
+	return s7_write_data(fd, address, length, in_bytes, false, false);
 }
 
 s7_error_code_e s7_remote_run(int fd)
@@ -473,33 +424,6 @@ bool initialization_on_connect(int fd)
 
 	// 返回成功的信号 -> Return a successful signal
 	return true;
-}
-
-s7_error_code_e s7_read_response(int fd, byte_array_info* response, int* read_count)
-{
-	if (fd <= 0 || read_count == 0 || response == NULL)
-		return S7_ERROR_CODE_INVALID_PARAMETER;
-
-	byte* temp = malloc(BUFFER_SIZE); // 动态分配缓冲区
-	if (temp == NULL)
-		return S7_ERROR_CODE_MALLOC_FAILED;
-
-	memset(temp, 0, BUFFER_SIZE);
-	response->data = temp;
-	response->length = BUFFER_SIZE;
-
-	*read_count = 0;
-	char* ptr = (char*)response->data;
-
-	if (fd <= 0 || response->length <= 0) return -1;
-	*read_count = (int)recv(fd, ptr, response->length, 0);
-
-	if (*read_count < 0) {
-		return S7_ERROR_CODE_FAILED;
-	}
-	response->length = *read_count;
-
-	return S7_ERROR_CODE_SUCCESS;
 }
 
 //////////////////////////////////////////////////////////////////////////
