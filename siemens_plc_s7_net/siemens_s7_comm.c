@@ -32,7 +32,7 @@ int calculate_address_started(const char* address, bool isCT)
 
 bool s7_analysis_address(const char* address, int length, siemens_s7_address_data* address_data)
 {
-	if(address == NULL || length <= 0 || address_data == NULL) 
+	if (address == NULL || length <= 0 || address_data == NULL)
 		return false;
 
 	address_data->length = length;
@@ -41,157 +41,81 @@ bool s7_analysis_address(const char* address, int length, siemens_s7_address_dat
 	dynstr temp_address = dynstr_new(address);
 	str_toupper(temp_address);
 
-	if (0 == str_start_with(temp_address, "AI"))
-	{
-		address_data->data_code = 0x06;
-		int sub_str_len = 2;
+	const char* prefixes[] = { "AI", "AQ", "I", "Q", "M", "D", "DB", "T", "C", "V" };
+	const int data_codes[] = { 0x06, 0x07, 0x81, 0x82, 0x83, 0x84, 0x84, 0x1F, 0x1E, 0x84 };
+	const int sub_str_lens[] = { 2, 2, 1, 1, 1, 1, 2, 1, 1, 1 };
+	const int prefix_count = sizeof(prefixes) / sizeof(prefixes[0]);
 
-		if (0 == str_start_with(temp_address, "AIX") ||
-			0 == str_start_with(temp_address, "AIB") ||
-			0 == str_start_with(temp_address, "AIW") ||
-			0 == str_start_with(temp_address, "AID"))
-		{
-			sub_str_len = 3;
-		}
+	for (int i = 0; i < prefix_count; ++i) {
+		if (0 == str_start_with(temp_address, prefixes[i])) {
+			address_data->data_code = data_codes[i];
+			int sub_str_len = sub_str_lens[i];
 
-		dynstr_range(temp_address, sub_str_len, -1);
-		address_data->address_start = calculate_address_started(temp_address, false);
-	}
-	else if (0 == str_start_with(temp_address, "AQ"))
-	{
-		address_data->data_code = 0x07;
-		int sub_str_len = 2;
+			if (i == 5 || i == 6) { // Handle "D" and "DB" separately
+				int temp_split_count = 0;
+				dynstr* ret_splits = dynstr_split(temp_address, strlen(temp_address), ".", 1, &temp_split_count);
+				if (0 == str_start_with(ret_splits[0], "DB"))
+					sub_str_len = 2;
 
-		if (0 == str_start_with(temp_address, "AQX") ||
-			0 == str_start_with(temp_address, "AQB") ||
-			0 == str_start_with(temp_address, "AQW") ||
-			0 == str_start_with(temp_address, "AQD"))
-		{
-			sub_str_len = 3;
-		}
+				dynstr_range(ret_splits[0], sub_str_len, -1);
+				address_data->db_block = str_to_int(ret_splits[0]);
 
-		dynstr_range(temp_address, sub_str_len, -1);
-		address_data->address_start = calculate_address_started(temp_address, false);
-	}
-	else if (0 == str_start_with(temp_address, "I"))
-	{
-		address_data->data_code = 0x81;
-		int sub_str_len = 1;
+				if (temp_split_count > 1) {
+					sub_str_len = 0;
+					if (0 == str_start_with(ret_splits[1], "DBX") ||
+						0 == str_start_with(ret_splits[1], "DBB") ||
+						0 == str_start_with(ret_splits[1], "DBW") ||
+						0 == str_start_with(ret_splits[1], "DBD")) {
+						sub_str_len = 3;
+					}
 
-		if (0 == str_start_with(temp_address, "IX") ||
-			0 == str_start_with(temp_address, "IB") ||
-			0 == str_start_with(temp_address, "IW") ||
-			0 == str_start_with(temp_address, "ID"))
-		{
-			sub_str_len = 2;
-		}
+					dynstr temp_addr = dynstr_dup(ret_splits[1]);
+					if (temp_split_count > 2) {
+						dynstr temp_addr2 = dynstr_cat(ret_splits[1], ".");
+						temp_addr = dynstr_cat_dynstr(temp_addr2, ret_splits[2]);
+						dynstr_free(temp_addr2);
+					}
 
-		dynstr_range(temp_address, sub_str_len, -1);
-		address_data->address_start = calculate_address_started(temp_address, false);
-	}
-	else if (0 == str_start_with(temp_address, "Q"))
-	{
-		address_data->data_code = 0x82;
-		int sub_str_len = 1;
+					dynstr_range(temp_addr, sub_str_len, -1);
+					address_data->address_start = calculate_address_started(temp_addr, false);
+					dynstr_free(temp_addr);
 
-		if (0 == str_start_with(temp_address, "QX") ||
-			0 == str_start_with(temp_address, "QB") ||
-			0 == str_start_with(temp_address, "QW") ||
-			0 == str_start_with(temp_address, "QD"))
-		{
-			sub_str_len = 2;
-		}
-
-		dynstr_range(temp_address, sub_str_len, -1);
-		address_data->address_start = calculate_address_started(temp_address, false);
-	}
-	else if (0 == str_start_with(temp_address, "M"))
-	{
-		address_data->data_code = 0x83;
-		int sub_str_len = 1;
-
-		if (0 == str_start_with(temp_address, "MX") ||
-			0 == str_start_with(temp_address, "MB") ||
-			0 == str_start_with(temp_address, "MW") ||
-			0 == str_start_with(temp_address, "MD"))
-		{
-			sub_str_len = 2;
-		}
-
-		dynstr_range(temp_address, sub_str_len, -1);
-		address_data->address_start = calculate_address_started(temp_address, false);
-	}
-	else if (0 == str_start_with(temp_address, "D") || 0 == str_start_with(temp_address, "DB"))
-	{
-		address_data->data_code = 0x84;
-		int sub_str_len = 1;
-
-		int temp_split_count = 0;
-		dynstr* ret_splits = dynstr_split(temp_address, strlen(temp_address), ".", 1, &temp_split_count);
-		if (0 == str_start_with(ret_splits[0], "DB"))
-			sub_str_len = 2;
-
-		dynstr_range(ret_splits[0], sub_str_len, -1);
-		address_data->db_block = str_to_int(ret_splits[0]);
-
-		// 后缀码
-		if (temp_split_count > 1)
-		{
-			sub_str_len = 0;
-			if (0 == str_start_with(ret_splits[1], "DBX") ||
-				0 == str_start_with(ret_splits[1], "DBB") ||
-				0 == str_start_with(ret_splits[1], "DBW") ||
-				0 == str_start_with(ret_splits[1], "DBD"))
-			{
-				sub_str_len = 3;
+					dynstr_freesplitres(ret_splits, temp_split_count);
+				}
 			}
+			else {
+				if (0 == str_start_with(temp_address, "AIX") ||
+					0 == str_start_with(temp_address, "AIB") ||
+					0 == str_start_with(temp_address, "AIW") ||
+					0 == str_start_with(temp_address, "AID") ||
+					0 == str_start_with(temp_address, "AQX") ||
+					0 == str_start_with(temp_address, "AQB") ||
+					0 == str_start_with(temp_address, "AQW") ||
+					0 == str_start_with(temp_address, "AQD") ||
+					0 == str_start_with(temp_address, "IX") ||
+					0 == str_start_with(temp_address, "IB") ||
+					0 == str_start_with(temp_address, "IW") ||
+					0 == str_start_with(temp_address, "ID") ||
+					0 == str_start_with(temp_address, "QX") ||
+					0 == str_start_with(temp_address, "QB") ||
+					0 == str_start_with(temp_address, "QW") ||
+					0 == str_start_with(temp_address, "QD") ||
+					0 == str_start_with(temp_address, "MX") ||
+					0 == str_start_with(temp_address, "MB") ||
+					0 == str_start_with(temp_address, "MW") ||
+					0 == str_start_with(temp_address, "MD") ||
+					0 == str_start_with(temp_address, "VX") ||
+					0 == str_start_with(temp_address, "VB") ||
+					0 == str_start_with(temp_address, "VW") ||
+					0 == str_start_with(temp_address, "VD")) {
+					sub_str_len++;
+				}
 
-			dynstr temp_addr = dynstr_dup(ret_splits[1]);
-			if (temp_split_count > 2)
-			{
-				dynstr temp_addr2 = dynstr_cat(ret_splits[1], ".");
-				temp_addr = dynstr_cat_dynstr(temp_addr2, ret_splits[2]);
-				dynstr_free(temp_addr2);
+				dynstr_range(temp_address, sub_str_len, -1);
+				address_data->address_start = calculate_address_started(temp_address, i == 7 || i == 8);
 			}
-
-			dynstr_range(temp_addr, sub_str_len, -1);
-			address_data->address_start = calculate_address_started(temp_addr, false);
-			dynstr_free(temp_addr);
-
-			dynstr_freesplitres(ret_splits,temp_split_count);
+			break;
 		}
-	}
-	else if (0 == str_start_with(temp_address, "T"))
-	{
-		address_data->data_code = 0x1F;
-		int sub_str_len = 1;
-
-		dynstr_range(temp_address, sub_str_len, -1);
-		address_data->address_start = calculate_address_started(temp_address, true);
-	}
-	else if (0 == str_start_with(temp_address, "C"))
-	{
-		address_data->data_code = 0x1E;
-		int sub_str_len = 1;
-
-		dynstr_range(temp_address, sub_str_len, -1);
-		address_data->address_start = calculate_address_started(temp_address, true);
-	}
-	else if (0 == str_start_with(temp_address, "V"))
-	{
-		address_data->data_code = 0x84;
-		address_data->db_block = 1;
-		int sub_str_len = 1;
-		if (0 == str_start_with(temp_address, "VX") ||
-			0 == str_start_with(temp_address, "VB") ||
-			0 == str_start_with(temp_address, "VW") ||
-			0 == str_start_with(temp_address, "VD"))
-		{
-			sub_str_len = 2;
-		}
-
-		dynstr_range(temp_address, sub_str_len, -1);
-		address_data->address_start = calculate_address_started(temp_address, true);
 	}
 
 	dynstr_free(temp_address);

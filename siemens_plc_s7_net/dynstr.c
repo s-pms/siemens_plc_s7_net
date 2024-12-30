@@ -927,9 +927,9 @@ static int fastsearch(const char* s, int n,
 	}
 	else {    /* FAST_RSEARCH */
 
-	/* create compressed boyer-moore delta 1 table */
+		/* create compressed boyer-moore delta 1 table */
 
-	/* process pattern[0] outside the loop */
+		/* process pattern[0] outside the loop */
 		STRING_BLOOM_ADD(mask, p[0]);
 		/* process pattern[:0:-1] */
 		for (i = mlast; i > 0; i--) {
@@ -1110,7 +1110,7 @@ dynstr* dynstr_splitchar(const char* s, int len, const char ch, int* count)
 	return tokens;
 
 cleanup:
-	for ( i = 0; i < elements; i++)
+	for (i = 0; i < elements; i++)
 		dynstr_free(tokens[i]);
 	free(tokens);
 	*count = 0;
@@ -1121,7 +1121,7 @@ cleanup:
  **/
 dynstr* dynstr_rsplitchar(const char* s, int len, const char ch, int* count)
 {
-	int elements = 0, slots = 5, start = 0, i=0, j = 0;
+	int elements = 0, slots = 5, start = 0, i = 0, j = 0;
 	dynstr* tokens;
 	if (len < 0) return NULL;
 	tokens = malloc(sizeof(dynstr) * slots);
