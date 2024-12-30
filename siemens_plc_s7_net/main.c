@@ -20,7 +20,7 @@ int main(int argc, char** argv)
 	}
 #endif
 
-	char* plc_ip = "127.0.0.1";
+	char* plc_ip = "172.18.224.1";
 	int plc_port = 102;
 	if (argc > 1)
 	{
@@ -76,7 +76,7 @@ int main(int argc, char** argv)
 			GET_RESULT(ret);
 
 			//////////////////////////////////////////////////////////////////////////
-			short w_s_val = 223;
+			short w_s_val = -223;
 			strcpy(address, "MW100");
 			ret = s7_write_short(fd, address, w_s_val);
 			printf("Write\t %s \tshort:\t %d, \tret: %d\n", address, w_s_val, ret);
@@ -100,7 +100,7 @@ int main(int argc, char** argv)
 			GET_RESULT(ret);
 
 			//////////////////////////////////////////////////////////////////////////
-			int32 w_i_val = 12345;
+			int32 w_i_val = -12345;
 			strcpy(address, "DB1.70");
 			ret = s7_write_int32(fd, address, w_i_val);
 			printf("Write\t %s \tint32:\t %d, \tret: %d\n", address, w_i_val, ret);
@@ -123,7 +123,7 @@ int main(int argc, char** argv)
 			GET_RESULT(ret);
 
 			//////////////////////////////////////////////////////////////////////////
-			int64 w_i64_val = 333334554;
+			int64 w_i64_val = -333334554;
 			strcpy(address, "DB1.DBD70");
 			ret = s7_write_int64(fd, address, w_i64_val);
 			printf("Write\t %s \tuint64:\t %lld, \tret: %d\n", address, w_i64_val, ret);
@@ -159,7 +159,7 @@ int main(int argc, char** argv)
 			GET_RESULT(ret);
 
 			//////////////////////////////////////////////////////////////////////////
-			double w_d_val = 12345.6789;
+			double w_d_val = -12345.6789;
 			ret = s7_write_double(fd, address, w_d_val);
 			printf("Write\t %s \tdouble:\t %lf, \tret: %d\n", address, w_d_val, ret);
 			GET_RESULT(ret);
