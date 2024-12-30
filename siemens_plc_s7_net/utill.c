@@ -24,145 +24,98 @@
               ( ((l) << 40) & 0x00FF000000000000LL ) |       \
               ( ((l) << 56) & 0xFF00000000000000LL ) )
 
-void short2bytes(short i, byte* bytes)
-{
-	int size = 2;
-	memset(bytes, 0, sizeof(byte) * size);
-	bytes[0] = (byte)(0xff & i);
-	bytes[1] = (byte)((0xff00 & i) >> 8);
+void short2bytes(short i, byte* bytes) {
+    bytes[0] = (byte)(i & 0xFF);
+    bytes[1] = (byte)((i >> 8) & 0xFF);
 }
 
-short bytes2short(byte* bytes)
-{
-	short iRetVal = bytes[0] & 0xFF;
-	iRetVal |= (((short)bytes[1] << 8) & 0xFF00);
-	return iRetVal;
+short bytes2short(byte* bytes) {
+    return (short)(bytes[0] & 0xFF | (bytes[1] << 8));
 }
 
 void ushort2bytes(ushort i, byte* bytes) {
-	int size = 2;
-	memset(bytes, 0, sizeof(byte) * size);
-	bytes[0] = (byte)(0xff & i);
-	bytes[1] = (byte)((0xff00 & i) >> 8);
+    bytes[0] = (byte)(i & 0xFF);
+    bytes[1] = (byte)((i >> 8) & 0xFF);
 }
 
 ushort bytes2ushort(byte* bytes) {
-	ushort iRetVal = bytes[0] & 0xFF;
-	iRetVal |= (((ushort)bytes[1] << 8) & 0xFF00);
-	return iRetVal;
+    return (ushort)(bytes[0] & 0xFF | (bytes[1] << 8));
 }
 
 void int2bytes(int32 i, byte* bytes) {
-	int size = 4;
-	memset(bytes, 0, sizeof(byte) * size);
-	bytes[0] = (byte)(0xff & i);
-	bytes[1] = (byte)((0xff00 & i) >> 8);
-	bytes[2] = (byte)((0xff0000 & i) >> 16);
-	bytes[3] = (byte)((0xff000000 & i) >> 24);
+    for (int j = 0; j < 4; j++) {
+        bytes[j] = (byte)((i >> (j * 8)) & 0xFF);
+    }
 }
 
 int32 bytes2int32(byte* bytes) {
-	int32 iRetVal = bytes[0] & 0xFF;
-	iRetVal |= (((int32)bytes[1] << 8) & 0xFF00);
-	iRetVal |= (((int32)bytes[2] << 16) & 0xFF0000);
-	iRetVal |= (((int32)bytes[3] << 24) & 0xFF000000);
-	return iRetVal;
+    int32 iRetVal = 0;
+    for (int j = 0; j < 4; j++) {
+        iRetVal |= ((int32)bytes[j] << (j * 8));
+    }
+    return iRetVal;
 }
 
 void uint2bytes(uint32 i, byte* bytes) {
-	int size = 4;
-	memset(bytes, 0, sizeof(byte) * size);
-	bytes[0] = (byte)(0xff & i);
-	bytes[1] = (byte)((0xff00 & i) >> 8);
-	bytes[2] = (byte)((0xff0000 & i) >> 16);
-	bytes[3] = (byte)((0xff000000 & i) >> 24);
+    for (int j = 0; j < 4; j++) {
+        bytes[j] = (byte)((i >> (j * 8)) & 0xFF);
+    }
 }
 
 uint32 bytes2uint32(byte* bytes) {
-	uint32 iRetVal = bytes[0] & 0xFF;
-	iRetVal |= (((uint32)bytes[1] << 8) & 0xFF00);
-	iRetVal |= (((uint32)bytes[2] << 16) & 0xFF0000);
-	iRetVal |= (((uint32)bytes[3] << 24) & 0xFF000000);
-	return iRetVal;
+    uint32 iRetVal = 0;
+    for (int j = 0; j < 4; j++) {
+        iRetVal |= ((uint32)bytes[j] << (j * 8));
+    }
+    return iRetVal;
 }
 
-void bigInt2bytes(int64 i, byte* bytes)
-{
-	int size = 8;
-	memset(bytes, 0, sizeof(byte) * size);
-	bytes[0] = (byte)(0xff & i);
-	bytes[1] = (byte)(0xff & (i >> 8));
-	bytes[2] = (byte)(0xff & (i >> 16));
-	bytes[3] = (byte)(0xff & (i >> 24));
-	bytes[4] = (byte)(0xff & (i >> 32));
-	bytes[5] = (byte)(0xff & (i >> 40));
-	bytes[6] = (byte)(0xff & (i >> 48));
-	bytes[7] = (byte)(0xff & (i >> 56));
+void bigInt2bytes(int64 i, byte* bytes) {
+    for (int j = 0; j < 8; j++) {
+        bytes[j] = (byte)((i >> (j * 8)) & 0xFF);
+    }
 }
 
-int64 bytes2bigInt(byte* bytes)
-{
-	int64 iRetVal = bytes[0] & 0xFF;
-	iRetVal |= (((int64)bytes[1] << 8) & 0xFF00);
-	iRetVal |= (((int64)bytes[2] << 16) & 0xFF0000);
-	iRetVal |= (((int64)bytes[3] << 24) & 0xFF000000);
-	iRetVal |= (((int64)bytes[4] << 32) & 0xFF00000000);
-	iRetVal |= (((int64)bytes[5] << 40) & 0xFF0000000000);
-	iRetVal |= (((int64)bytes[6] << 48) & 0xFF000000000000);
-	iRetVal |= (((int64)bytes[7] << 56) & 0xFF00000000000000);
-	return iRetVal;
+int64 bytes2bigInt(byte* bytes) {
+    int64 iRetVal = 0;
+    for (int j = 0; j < 8; j++) {
+        iRetVal |= ((int64)bytes[j] << (j * 8));
+    }
+    return iRetVal;
 }
 
-void ubigInt2bytes(uint64 i, byte* bytes)
-{
-	int size = 8;
-	memset(bytes, 0, sizeof(byte) * size);
-	bytes[0] = (byte)(0xff & i);
-	bytes[1] = (byte)(0xff & (i >> 8));
-	bytes[2] = (byte)(0xff & (i >> 16));
-	bytes[3] = (byte)(0xff & (i >> 24));
-	bytes[4] = (byte)(0xff & (i >> 32));
-	bytes[5] = (byte)(0xff & (i >> 40));
-	bytes[6] = (byte)(0xff & (i >> 48));
-	bytes[7] = (byte)(0xff & (i >> 56));
+void ubigInt2bytes(uint64 i, byte* bytes) {
+    for (int j = 0; j < 8; j++) {
+        bytes[j] = (byte)((i >> (j * 8)) & 0xFF);
+    }
 }
 
-uint64 bytes2ubigInt(byte* bytes)
-{
-	uint64 iRetVal = bytes[0] & 0xFF;
-	iRetVal |= (((uint64)bytes[1] << 8) & 0xFF00);
-	iRetVal |= (((uint64)bytes[2] << 16) & 0xFF0000);
-	iRetVal |= (((uint64)bytes[3] << 24) & 0xFF000000);
-	iRetVal |= (((uint64)bytes[4] << 32) & 0xFF00000000);
-	iRetVal |= (((uint64)bytes[5] << 40) & 0xFF0000000000);
-	iRetVal |= (((uint64)bytes[6] << 48) & 0xFF000000000000);
-	iRetVal |= (((uint64)bytes[7] << 56) & 0xFF00000000000000);
-	return iRetVal;
+uint64 bytes2ubigInt(byte* bytes) {
+    uint64 iRetVal = 0;
+    for (int j = 0; j < 8; j++) {
+        iRetVal |= ((uint64)bytes[j] << (j * 8));
+    }
+    return iRetVal;
 }
 
-void float2bytes(float i, byte* bytes)
-{
-	int size = 4;
-	int temp = *(int*)&i;
-	int2bytes(temp, bytes);
+void float2bytes(float i, byte* bytes) {
+    int temp = *(int*)&i;
+    int2bytes(temp, bytes);
 }
 
-float bytes2float(byte* bytes)
-{
-	int temp = bytes2int32(bytes);
-	return *(float*)&temp;
+float bytes2float(byte* bytes) {
+    int temp = bytes2int32(bytes);
+    return *(float*)&temp;
 }
 
-void double2bytes(double i, byte* bytes)
-{
-	int64 temp = *(int64*)&i;
-	bigInt2bytes(temp, bytes);
+void double2bytes(double i, byte* bytes) {
+    int64 temp = *(int64*)&i;
+    bigInt2bytes(temp, bytes);
 }
 
-double bytes2double(byte* bytes)
-{
-	int64 temp = bytes2bigInt(bytes);
-	return *(double*)&temp;
+double bytes2double(byte* bytes) {
+    int64 temp = bytes2bigInt(bytes);
+    return *(double*)&temp;
 }
 
 int str_to_int(const char* address)
