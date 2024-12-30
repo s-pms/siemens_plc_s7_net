@@ -20,7 +20,7 @@ int main(int argc, char** argv)
 	}
 #endif
 
-	char* plc_ip = "172.18.224.1";
+	char* plc_ip = "127.0.0.1";
 	int plc_port = 102;
 	if (argc > 1)
 	{
