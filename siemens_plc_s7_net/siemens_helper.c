@@ -7,7 +7,7 @@
 #define BUFFER_SIZE 1024
 
 // 提取公共的命令头部构建逻辑
-void build_command_header(byte* command, ushort command_len, byte command_type) {
+static void build_command_header(byte* command, ushort command_len, byte command_type) {
 	command[0] = 0x03;
 	command[1] = 0x00;
 	command[2] = (byte)(command_len / 256);

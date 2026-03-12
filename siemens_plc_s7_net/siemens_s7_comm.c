@@ -9,7 +9,7 @@
 /// <param name="address">字符串地址</param>
 /// <param name="isCT">是否是定时器和计数器的地址</param>
 /// <returns></returns>
-int calculate_address_started(const char* address, bool isCT)
+static int calculate_address_started(const char* address, bool isCT)
 {
 	int addr_len = strlen(address);
 	int ret_count = 0;

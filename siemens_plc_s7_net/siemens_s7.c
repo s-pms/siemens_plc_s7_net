@@ -126,7 +126,7 @@ s7_error_code_e s7_read_response(int fd, byte_array_info* response, int* read_co
 	return S7_ERROR_CODE_SUCCESS;
 }
 
-s7_error_code_e s7_read_data(int fd, const char* address, int length, byte_array_info* out_bytes, bool is_bit)
+static s7_error_code_e s7_read_data(int fd, const char* address, int length, byte_array_info* out_bytes, bool is_bit)
 {
 	if (fd < 0 || address == NULL || length <= 0 || out_bytes == NULL)
 		return S7_ERROR_CODE_INVALID_PARAMETER;
@@ -176,7 +176,7 @@ s7_error_code_e read_byte_value(int fd, const char* address, int length, byte_ar
 	return s7_read_data(fd, address, length, out_bytes, false);
 }
 
-s7_error_code_e s7_write_data(int fd, const char* address, int length, byte_array_info in_bytes, bool is_bit, bool value)
+static s7_error_code_e s7_write_data(int fd, const char* address, int length, byte_array_info in_bytes, bool is_bit, bool value)
 {
 	if (fd < 0 || address == NULL || length <= 0)
 		return S7_ERROR_CODE_INVALID_PARAMETER;
@@ -653,22 +653,25 @@ s7_error_code_e s7_write_byte(int fd, const char* address, byte val)
 	return write_byte_value(fd, address, 1, write_data);
 }
 
-s7_error_code_e s7_write_short(int fd, const char* address, short val)
-{
-	if (fd < 0 || address == NULL || strlen(address) == 0)
-		return S7_ERROR_CODE_INVALID_PARAMETER;
+s7_error_code_e s7_write_short(int fd, const char* address, short val)  
+{  
+   if (fd < 0 || address == NULL || strlen(address) == 0)  
+       return S7_ERROR_CODE_INVALID_PARAMETER;  
 
-	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
-	int write_len = 2;
-	byte_array_info write_data = { 0 };
-	write_data.data = (byte*)malloc(write_len);
-	memset(write_data.data, 0, write_len);
-	write_data.length = write_len;
+   s7_error_code_e ret = S7_ERROR_CODE_FAILED;  
+   int write_len = 2;  
+   byte_array_info write_data = { 0 };  
+   write_data.data = (byte*)malloc(write_len);  
+   if (write_data.data == NULL)  
+       return S7_ERROR_CODE_MALLOC_FAILED;  
 
-	short2bytes(htons(val), write_data.data);
-	ret = write_byte_value(fd, address, 2, write_data);
-	RELEASE_DATA(write_data.data);
-	return ret;
+   memset(write_data.data, 0, write_len);  
+   write_data.length = write_len;  
+
+   short2bytes(htons(val), write_data.data);  
+   ret = write_byte_value(fd, address, 2, write_data);  
+   RELEASE_DATA(write_data.data);  
+   return ret;  
 }
 
 s7_error_code_e s7_write_ushort(int fd, const char* address, ushort val)
@@ -680,6 +683,8 @@ s7_error_code_e s7_write_ushort(int fd, const char* address, ushort val)
 	int write_len = 2;
 	byte_array_info write_data = { 0 };
 	write_data.data = (byte*)malloc(write_len);
+	if (write_data.data == NULL)
+		return S7_ERROR_CODE_MALLOC_FAILED;
 	memset(write_data.data, 0, write_len);
 	write_data.length = write_len;
 
@@ -698,6 +703,8 @@ s7_error_code_e s7_write_int32(int fd, const char* address, int32 val)
 	int write_len = 4;
 	byte_array_info write_data = { 0 };
 	write_data.data = (byte*)malloc(write_len);
+	if (write_data.data == NULL)
+		return S7_ERROR_CODE_MALLOC_FAILED;
 	memset(write_data.data, 0, write_len);
 	write_data.length = write_len;
 
@@ -716,6 +723,8 @@ s7_error_code_e s7_write_uint32(int fd, const char* address, uint32 val)
 	int write_len = 4;
 	byte_array_info write_data = { 0 };
 	write_data.data = (byte*)malloc(write_len);
+	if (write_data.data == NULL)
+		return S7_ERROR_CODE_MALLOC_FAILED;
 	memset(write_data.data, 0, write_len);
 	write_data.length = write_len;
 
@@ -734,6 +743,8 @@ s7_error_code_e s7_write_int64(int fd, const char* address, int64 val)
 	int write_len = 8;
 	byte_array_info write_data = { 0 };
 	write_data.data = (byte*)malloc(write_len);
+	if (write_data.data == NULL)
+		return S7_ERROR_CODE_MALLOC_FAILED;
 	memset(write_data.data, 0, write_len);
 	write_data.length = write_len;
 
@@ -752,6 +763,8 @@ s7_error_code_e s7_write_uint64(int fd, const char* address, uint64 val)
 	int write_len = 8;
 	byte_array_info write_data = { 0 };
 	write_data.data = (byte*)malloc(write_len);
+	if (write_data.data == NULL)
+		return S7_ERROR_CODE_MALLOC_FAILED;
 	memset(write_data.data, 0, write_len);
 	write_data.length = write_len;
 
@@ -770,6 +783,8 @@ s7_error_code_e s7_write_float(int fd, const char* address, float val)
 	int write_len = 4;
 	byte_array_info write_data = { 0 };
 	write_data.data = (byte*)malloc(write_len);
+	if (write_data.data == NULL)
+		return S7_ERROR_CODE_MALLOC_FAILED;
 	memset(write_data.data, 0, write_len);
 	write_data.length = write_len;
 
@@ -788,6 +803,8 @@ s7_error_code_e s7_write_double(int fd, const char* address, double val)
 	int write_len = 8;
 	byte_array_info write_data = { 0 };
 	write_data.data = (byte*)malloc(write_len);
+	if (write_data.data == NULL)
+		return S7_ERROR_CODE_MALLOC_FAILED;
 	memset(write_data.data, 0, write_len);
 	write_data.length = write_len;
 
@@ -806,6 +823,8 @@ s7_error_code_e s7_write_string(int fd, const char* address, int length, const c
 	int write_len = (length % 2) == 1 ? length + 1 : length;
 	byte_array_info write_data = { 0 };
 	write_data.data = (byte*)malloc(write_len);
+	if (write_data.data == NULL)
+		return S7_ERROR_CODE_MALLOC_FAILED;
 	memset(write_data.data, 0, write_len);
 	memcpy(write_data.data, val, length);
 	write_data.length = write_len;
