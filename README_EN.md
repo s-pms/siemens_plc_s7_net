@@ -6,6 +6,38 @@
 - Test Device: S1200
 Currently implemented functionality includes a Siemens PLC communication class utilizing the S7 protocol. Configuration of the Ethernet module on the PLC side is required beforehand.
 
+## Recent Updates (2026-03)
+
+- Connection model upgraded: TCP connection now uses non-blocking `connect + select` timeout handling to avoid unstable blocking behavior.
+- Protocol read hardening: `s7_read_response` now validates TPKT/COTP/S7 header signatures instead of checking length only.
+- Address parsing hardening: boundary addresses are validated, such as `DB1.DBX0.1`, `T100`, and `C100`.
+- Address parsing hardening: invalid inputs are rejected strictly, including empty strings, `MX0.8`, and `MX0.A`.
+- FD validation unified: invalid descriptor check is now consistently `fd < 0`, avoiding false negatives for `fd == 0`.
+- Added minimal regression tests covering address edge cases, short TPKT protection, and remote run/stop packet-content verification.
+
+## Build And Test
+
+Recommended commands on Linux/WSL:
+
+```bash
+# Build main target
+make
+
+# Build regression tests
+make tests
+
+# Run regression tests
+./tests/test_minimal_regression
+```
+
+Windows PowerShell calling WSL example:
+
+```powershell
+wsl.exe bash -lc 'cd /mnt/e/GitHub/siemens_plc_s7_net && make clean && make && make tests && ./tests/test_minimal_regression'
+```
+
+Note: top-level `make` builds the main target only. Tests are triggered explicitly via `make tests` to avoid artifact collisions.
+
 ## Header Files
 
 ```c

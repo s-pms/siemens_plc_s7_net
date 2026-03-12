@@ -9,6 +9,38 @@
 
 目前实现功能，实现西门子PLC通讯类，采用S7协议实现，需要在PLC侧先的以太网模块先进行配置。
 
+## 最近优化（2026-03）
+
+- 连接模型升级：TCP 连接改为非阻塞 `connect + select` 超时机制，避免阻塞连接导致的不稳定。
+- 协议读取增强：`s7_read_response` 新增 TPKT/COTP/S7 头字段校验，不再只做长度判断。
+- 地址解析增强：支持并验证边界地址，如 `DB1.DBX0.1`、`T100`、`C100`。
+- 地址解析增强：严格拒绝非法地址，如空字符串、`MX0.8`、`MX0.A`。
+- fd 判定统一：内部统一使用 `fd < 0` 作为无效句柄，避免误判 `fd == 0`。
+- 新增最小回归测试：覆盖地址解析边界、TPKT 短包保护、remote run/stop 报文内容校验。
+
+## 构建与测试
+
+Linux/WSL 下推荐命令：
+
+```bash
+# 主程序构建
+make
+
+# 回归测试构建
+make tests
+
+# 执行回归测试
+./tests/test_minimal_regression
+```
+
+Windows PowerShell 调用 WSL 示例：
+
+```powershell
+wsl.exe bash -lc 'cd /mnt/e/GitHub/siemens_plc_s7_net && make clean && make && make tests && ./tests/test_minimal_regression'
+```
+
+说明：顶层 `make` 默认只构建主程序；测试通过 `make tests` 显式触发，避免构建产物冲突。
+
 ## 头文件
 
 ```c
