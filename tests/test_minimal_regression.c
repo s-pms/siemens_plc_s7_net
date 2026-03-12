@@ -67,6 +67,10 @@ static void build_success_write_response(unsigned char response[22]) {
 	response[1] = 0x00;
 	response[2] = 0x00;
 	response[3] = 0x16;
+	response[4] = 0x02;
+	response[5] = 0xF0;
+	response[6] = 0x80;
+	response[7] = 0x32;
 	response[21] = 0xFF;
 }
 
@@ -114,6 +118,7 @@ static int verify_command_roundtrip(s7_error_code_e (*command_fn)(int), const un
 		int exit_code = 1;
 
 		close(fds[0]);
+		// Child process plays the PLC side: verify the outgoing command, then send a minimal success response.
 		if (received != NULL && read_exact(fds[1], received, expected_len) == expected_len && memcmp(received, expected, expected_len) == 0) {
 			build_success_write_response(response);
 			if (write_exact(fds[1], response, 22) == 22) {
@@ -138,7 +143,13 @@ static void test_address_parser(void) {
 
 	EXPECT_TRUE("address: valid MX100", s7_analysis_address("MX100", 1, &data));
 	EXPECT_TRUE("address: valid DB1.DBD70", s7_analysis_address("DB1.DBD70", 4, &data));
+	EXPECT_TRUE("address: valid DB1.DBX0.1", s7_analysis_address("DB1.DBX0.1", 1, &data));
+	EXPECT_TRUE("address: valid T100", s7_analysis_address("T100", 2, &data));
+	EXPECT_TRUE("address: valid C100", s7_analysis_address("C100", 2, &data));
 	EXPECT_TRUE("address: invalid prefix", !s7_analysis_address("ZZ100", 1, &data));
+	EXPECT_TRUE("address: invalid fraction range", !s7_analysis_address("MX0.8", 1, &data));
+	EXPECT_TRUE("address: invalid fraction token", !s7_analysis_address("MX0.A", 1, &data));
+	EXPECT_TRUE("address: invalid empty string", !s7_analysis_address("", 0, &data));
 }
 
 static void test_short_packet_guard(void) {
@@ -153,6 +164,7 @@ static void test_short_packet_guard(void) {
 		if (pid == 0) {
 			unsigned char short_response[80] = { 0 };
 			close(fds[0]);
+			// Return a well-formed TPKT length that is still too short for the fixed PLC type payload offset.
 			if (drain_tpkt_request(fds[1])) {
 				short_response[0] = 0x03;
 				short_response[1] = 0x00;
@@ -171,6 +183,45 @@ static void test_short_packet_guard(void) {
 		close(fds[0]);
 		EXPECT_TRUE("plc_type: short TPKT rejected", ret == S7_ERROR_CODE_RESPONSE_HEADER_FAILED);
 		EXPECT_TRUE("plc_type: peer completed", wait_child_success(pid));
+	}
+#endif
+}
+
+static void test_malformed_header_guard(void) {
+	char* type = NULL;
+#ifdef _WIN32
+	EXPECT_TRUE("plc_type: malformed header test skipped on Windows", true);
+#else
+	int fds[2] = { -1, -1 };
+	EXPECT_TRUE("plc_type malformed: socketpair created", create_socket_pair(fds) == 0);
+	if (fds[0] >= 0 && fds[1] >= 0) {
+		pid_t pid = fork();
+		if (pid == 0) {
+			unsigned char response[91] = { 0 };
+			close(fds[0]);
+			// Keep the packet long enough, but corrupt the protocol signature bytes to exercise header validation.
+			if (drain_tpkt_request(fds[1])) {
+				response[0] = 0x03;
+				response[1] = 0x00;
+				response[2] = 0x00;
+				response[3] = 0x5B;
+				response[4] = 0x01;
+				response[5] = 0xF0;
+				response[6] = 0x80;
+				response[7] = 0x32;
+				write_exact(fds[1], response, 91);
+				close(fds[1]);
+				_exit(0);
+			}
+			close(fds[1]);
+			_exit(1);
+		}
+
+		close(fds[1]);
+		s7_error_code_e ret = s7_read_plc_type(fds[0], &type);
+		close(fds[0]);
+		EXPECT_TRUE("plc_type: malformed protocol header rejected", ret == S7_ERROR_CODE_RESPONSE_HEADER_FAILED);
+		EXPECT_TRUE("plc_type malformed: peer completed", wait_child_success(pid));
 	}
 #endif
 }
@@ -202,6 +253,7 @@ int main(void) {
 
 	test_address_parser();
 	test_short_packet_guard();
+	test_malformed_header_guard();
 	test_remote_run_stop_packet_path();
 
 	if (g_failed == 0) {

@@ -104,7 +104,7 @@ int main(int argc, char** argv)
 
 			//////////////////////////////////////////////////////////////////////////
 			int32 w_i_val = -12345;
-			strcpy(address, "DB1.70");
+			strcpy(address, "db1.70");
 			ret = s7_write_int32(fd, address, w_i_val);
 			printf("Write\t %s \tint32:\t %d, \tret: %d\n", address, w_i_val, ret);
 			GET_RESULT(ret);

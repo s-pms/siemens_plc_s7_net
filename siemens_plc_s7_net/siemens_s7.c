@@ -101,7 +101,8 @@ s7_error_code_e s7_read_response(int fd, byte_array_info* response, int* read_co
 		return S7_ERROR_CODE_FAILED;
 
 	int packet_size = ((int)header[2] << 8) | (int)header[3];
-	if (packet_size < 4)
+	// Reject frames that are not valid TPKT packets before reading the body.
+	if (header[0] != 0x03 || header[1] != 0x00 || packet_size < MIN_HEADER_SIZE)
 		return S7_ERROR_CODE_RESPONSE_HEADER_FAILED;
 
 	byte* temp = (byte*)malloc(packet_size);
@@ -117,6 +118,13 @@ s7_error_code_e s7_read_response(int fd, byte_array_info* response, int* read_co
 			RELEASE_DATA(temp);
 			return S7_ERROR_CODE_FAILED;
 		}
+	}
+
+	// Basic COTP + S7 signature check prevents treating arbitrary TCP data as S7 responses.
+	if (temp[4] != 0x02 || temp[5] != 0xF0 || temp[6] != 0x80 || temp[7] != 0x32)
+	{
+		RELEASE_DATA(temp);
+		return S7_ERROR_CODE_RESPONSE_HEADER_FAILED;
 	}
 
 	response->data = temp;

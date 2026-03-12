@@ -1,7 +1,7 @@
 #include "siemens_s7_comm.h"
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
-#include "dynstr.h"
 
 /// <summary>
 /// 计算特殊的地址信息
@@ -9,25 +9,71 @@
 /// <param name="address">字符串地址</param>
 /// <param name="isCT">是否是定时器和计数器的地址</param>
 /// <returns></returns>
-static int calculate_address_started(const char* address, bool isCT)
+static bool is_decimal_text(const char* text)
 {
-	int addr_len = strlen(address);
-	int ret_count = 0;
+	// Address segments are numeric-only; reject mixed tokens early to avoid silent truncation.
+	if (text == NULL || text[0] == '\0')
+		return false;
 
-	int ret = dynstr_find(address, addr_len, ".", 1);
-	if (ret < 0)  // 未找到 -1
+	for (int i = 0; text[i] != '\0'; ++i)
 	{
-		ret_count = isCT ? str_to_int(address) : str_to_int(address) * 8;
+		if (!isdigit((unsigned char)text[i]))
+			return false;
+	}
+
+	return true;
+}
+
+static bool calculate_address_started(const char* address, bool isCT, int* ret_count)
+{
+	if (address == NULL || ret_count == NULL)
+		return false;
+
+	int addr_len = strlen(address);
+	if (addr_len <= 0)
+		return false;
+
+	const char* dot = strchr(address, '.');
+	if (dot == NULL)
+	{
+		if (!is_decimal_text(address))
+			return false;
+
+		*ret_count = isCT ? str_to_int(address) : str_to_int(address) * 8;
 	}
 	else
 	{
-		int temp_split_count = 0;
-		dynstr* ret_splits = dynstr_split(address, addr_len, ".", 1, &temp_split_count);
-		ret_count = str_to_int(ret_splits[0]) * 8 + str_to_int(ret_splits[1]);
+		// Bit-address form must be exactly "byte.bit" and bit must stay within 0-7.
+		if (isCT || dot == address || dot[1] == '\0' || strchr(dot + 1, '.') != NULL)
+			return false;
 
-		dynstr_freesplitres(ret_splits, temp_split_count);
+		int byte_index_len = (int)(dot - address);
+		char* byte_index_text = (char*)malloc((size_t)byte_index_len + 1);
+		if (byte_index_text == NULL)
+		{
+			return false;
+		}
+
+		memcpy(byte_index_text, address, (size_t)byte_index_len);
+		byte_index_text[byte_index_len] = '\0';
+
+		if (!is_decimal_text(byte_index_text) || !is_decimal_text(dot + 1))
+		{
+			free(byte_index_text);
+			return false;
+		}
+
+		int bit_index = str_to_int(dot + 1);
+		if (bit_index < 0 || bit_index > 7)
+		{
+			free(byte_index_text);
+			return false;
+		}
+
+		*ret_count = str_to_int(byte_index_text) * 8 + bit_index;
+		free(byte_index_text);
 	}
-	return ret_count;
+	return true;
 }
 
 bool s7_analysis_address(const char* address, int length, siemens_s7_address_data* address_data)
@@ -35,93 +81,143 @@ bool s7_analysis_address(const char* address, int length, siemens_s7_address_dat
 	if (address == NULL || length <= 0 || address_data == NULL)
 		return false;
 
+	int address_len = (int)strlen(address);
+	if (address_len <= 0)
+		return false;
+
 	address_data->length = length;
 	address_data->data_code = 0;
 	address_data->db_block = 0;
 	address_data->address_start = 0;
 
-	dynstr temp_address = dynstr_new(address);
-	str_toupper(temp_address);
+	char* normalized = (char*)malloc((size_t)address_len + 1);
+	if (normalized == NULL)
+		return false;
 
-	const char* prefixes[] = { "AI", "AQ", "I", "Q", "M", "D", "DB", "T", "C", "V" };
-	const int data_codes[] = { 0x06, 0x07, 0x81, 0x82, 0x83, 0x84, 0x84, 0x1F, 0x1E, 0x84 };
-	const int sub_str_lens[] = { 2, 2, 1, 1, 1, 1, 2, 1, 1, 1 };
-	const int prefix_count = sizeof(prefixes) / sizeof(prefixes[0]);
-	bool matched = false;
+	memcpy(normalized, address, (size_t)address_len + 1);
+	// Parse on a normalized uppercase copy so all edge-case validation uses one code path.
+	str_toupper(normalized);
 
-	for (int i = 0; i < prefix_count; ++i) {
-		if (0 == str_start_with(temp_address, prefixes[i])) {
-			matched = true;
-			address_data->data_code = data_codes[i];
-			int sub_str_len = sub_str_lens[i];
+	bool matched = true;
+	int prefix_len = 0;
+	bool is_counter_timer = false;
 
-			if (i == 5 || i == 6) { // Handle "D" and "DB" separately
-				int temp_split_count = 0;
-				dynstr* ret_splits = dynstr_split(temp_address, strlen(temp_address), ".", 1, &temp_split_count);
-				if (0 == str_start_with(ret_splits[0], "DB"))
-					sub_str_len = 2;
+	if (strncmp(normalized, "AI", 2) == 0) {
+		address_data->data_code = 0x06;
+		prefix_len = 2;
+	}
+	else if (strncmp(normalized, "AQ", 2) == 0) {
+		address_data->data_code = 0x07;
+		prefix_len = 2;
+	}
+	else if (strncmp(normalized, "DB", 2) == 0) {
+		address_data->data_code = 0x84;
+		prefix_len = 2;
+	}
+	else if (strncmp(normalized, "I", 1) == 0) {
+		address_data->data_code = 0x81;
+		prefix_len = 1;
+	}
+	else if (strncmp(normalized, "Q", 1) == 0) {
+		address_data->data_code = 0x82;
+		prefix_len = 1;
+	}
+	else if (strncmp(normalized, "M", 1) == 0) {
+		address_data->data_code = 0x83;
+		prefix_len = 1;
+	}
+	else if (strncmp(normalized, "D", 1) == 0) {
+		address_data->data_code = 0x84;
+		prefix_len = 1;
+	}
+	else if (strncmp(normalized, "T", 1) == 0) {
+		address_data->data_code = 0x1F;
+		prefix_len = 1;
+		is_counter_timer = true;
+	}
+	else if (strncmp(normalized, "C", 1) == 0) {
+		address_data->data_code = 0x1E;
+		prefix_len = 1;
+		is_counter_timer = true;
+	}
+	else if (strncmp(normalized, "V", 1) == 0) {
+		address_data->data_code = 0x84;
+		prefix_len = 1;
+	}
+	else {
+		matched = false;
+	}
 
-				dynstr_range(ret_splits[0], sub_str_len, -1);
-				address_data->db_block = str_to_int(ret_splits[0]);
+	if (matched && address_data->data_code == 0x84 && (prefix_len == 1 || prefix_len == 2) && (normalized[0] == 'D'))
+	{
+		// DB addresses carry both block number and optional DBX/DBB/DBW/DBD suffix.
+		char* dot = strchr(normalized, '.');
+		char* data_part = NULL;
+		char saved = '\0';
 
-				if (temp_split_count > 1) {
-					sub_str_len = 0;
-					if (0 == str_start_with(ret_splits[1], "DBX") ||
-						0 == str_start_with(ret_splits[1], "DBB") ||
-						0 == str_start_with(ret_splits[1], "DBW") ||
-						0 == str_start_with(ret_splits[1], "DBD")) {
-						sub_str_len = 3;
-					}
+		if (dot != NULL) {
+			saved = *dot;
+			*dot = '\0';
+			data_part = dot + 1;
+		}
 
-					dynstr temp_addr = dynstr_dup(ret_splits[1]);
-					if (temp_split_count > 2) {
-						dynstr temp_addr2 = dynstr_cat(ret_splits[1], ".");
-						temp_addr = dynstr_cat_dynstr(temp_addr2, ret_splits[2]);
-						dynstr_free(temp_addr2);
-					}
+		if (!is_decimal_text(normalized + prefix_len)) {
+			matched = false;
+		}
+		else {
+			address_data->db_block = str_to_int(normalized + prefix_len);
+		}
 
-					dynstr_range(temp_addr, sub_str_len, -1);
-					address_data->address_start = calculate_address_started(temp_addr, false);
-					dynstr_free(temp_addr);
+		if (dot != NULL) {
+			*dot = saved;
+			if (matched) {
+				if (strncmp(data_part, "DBX", 3) == 0 ||
+					strncmp(data_part, "DBB", 3) == 0 ||
+					strncmp(data_part, "DBW", 3) == 0 ||
+					strncmp(data_part, "DBD", 3) == 0) {
+					data_part += 3;
+				}
 
-					dynstr_freesplitres(ret_splits, temp_split_count);
+				if (!calculate_address_started(data_part, false, &address_data->address_start)) {
+					matched = false;
 				}
 			}
-			else {
-				if (0 == str_start_with(temp_address, "AIX") ||
-					0 == str_start_with(temp_address, "AIB") ||
-					0 == str_start_with(temp_address, "AIW") ||
-					0 == str_start_with(temp_address, "AID") ||
-					0 == str_start_with(temp_address, "AQX") ||
-					0 == str_start_with(temp_address, "AQB") ||
-					0 == str_start_with(temp_address, "AQW") ||
-					0 == str_start_with(temp_address, "AQD") ||
-					0 == str_start_with(temp_address, "IX") ||
-					0 == str_start_with(temp_address, "IB") ||
-					0 == str_start_with(temp_address, "IW") ||
-					0 == str_start_with(temp_address, "ID") ||
-					0 == str_start_with(temp_address, "QX") ||
-					0 == str_start_with(temp_address, "QB") ||
-					0 == str_start_with(temp_address, "QW") ||
-					0 == str_start_with(temp_address, "QD") ||
-					0 == str_start_with(temp_address, "MX") ||
-					0 == str_start_with(temp_address, "MB") ||
-					0 == str_start_with(temp_address, "MW") ||
-					0 == str_start_with(temp_address, "MD") ||
-					0 == str_start_with(temp_address, "VX") ||
-					0 == str_start_with(temp_address, "VB") ||
-					0 == str_start_with(temp_address, "VW") ||
-					0 == str_start_with(temp_address, "VD")) {
-					sub_str_len++;
-				}
+		}
+	}
+	else if (matched)
+	{
+		if ((strncmp(normalized, "AIX", 3) == 0) ||
+			(strncmp(normalized, "AIB", 3) == 0) ||
+			(strncmp(normalized, "AIW", 3) == 0) ||
+			(strncmp(normalized, "AID", 3) == 0) ||
+			(strncmp(normalized, "AQX", 3) == 0) ||
+			(strncmp(normalized, "AQB", 3) == 0) ||
+			(strncmp(normalized, "AQW", 3) == 0) ||
+			(strncmp(normalized, "AQD", 3) == 0) ||
+			(strncmp(normalized, "IX", 2) == 0) ||
+			(strncmp(normalized, "IB", 2) == 0) ||
+			(strncmp(normalized, "IW", 2) == 0) ||
+			(strncmp(normalized, "ID", 2) == 0) ||
+			(strncmp(normalized, "QX", 2) == 0) ||
+			(strncmp(normalized, "QB", 2) == 0) ||
+			(strncmp(normalized, "QW", 2) == 0) ||
+			(strncmp(normalized, "QD", 2) == 0) ||
+			(strncmp(normalized, "MX", 2) == 0) ||
+			(strncmp(normalized, "MB", 2) == 0) ||
+			(strncmp(normalized, "MW", 2) == 0) ||
+			(strncmp(normalized, "MD", 2) == 0) ||
+			(strncmp(normalized, "VX", 2) == 0) ||
+			(strncmp(normalized, "VB", 2) == 0) ||
+			(strncmp(normalized, "VW", 2) == 0) ||
+			(strncmp(normalized, "VD", 2) == 0)) {
+			prefix_len++;
+		}
 
-				dynstr_range(temp_address, sub_str_len, -1);
-				address_data->address_start = calculate_address_started(temp_address, i == 7 || i == 8);
-			}
-			break;
+		if (!calculate_address_started(normalized + prefix_len, is_counter_timer, &address_data->address_start)) {
+			matched = false;
 		}
 	}
 
-	dynstr_free(temp_address);
+	free(normalized);
 	return matched;
 }
