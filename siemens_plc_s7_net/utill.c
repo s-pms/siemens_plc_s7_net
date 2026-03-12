@@ -1,6 +1,7 @@
 #include "utill.h"
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -148,7 +149,7 @@ void str_tolower(char* input)
 /**
 * ×Ö·û´®originÒÔ×Ö·û´®prefix¿ªÍ·£¬·µ»Ø0£»·ñÔò·µ»Ø1£»Òì³£·µ»Ø-1
 */
-int str_start_with(const char* origin, char* prefix)
+int str_start_with(const char* origin, const char* prefix)
 {
 	if (origin == NULL ||
 		prefix == NULL ||

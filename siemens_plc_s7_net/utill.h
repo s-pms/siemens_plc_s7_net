@@ -42,7 +42,7 @@ double bytes2double(byte* bytes);
 int str_to_int(const char* address);
 void str_toupper(char* input);
 void str_tolower(char* input);
-int str_start_with(const char* origin, char* prefix);
+int str_start_with(const char* origin, const char* prefix);
 
 uint32 htonf_(float value);
 float ntohf_(uint32 value);

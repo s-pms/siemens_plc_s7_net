@@ -36,7 +36,9 @@ bool s7_analysis_address(const char* address, int length, siemens_s7_address_dat
 		return false;
 
 	address_data->length = length;
+	address_data->data_code = 0;
 	address_data->db_block = 0;
+	address_data->address_start = 0;
 
 	dynstr temp_address = dynstr_new(address);
 	str_toupper(temp_address);
@@ -45,9 +47,11 @@ bool s7_analysis_address(const char* address, int length, siemens_s7_address_dat
 	const int data_codes[] = { 0x06, 0x07, 0x81, 0x82, 0x83, 0x84, 0x84, 0x1F, 0x1E, 0x84 };
 	const int sub_str_lens[] = { 2, 2, 1, 1, 1, 1, 2, 1, 1, 1 };
 	const int prefix_count = sizeof(prefixes) / sizeof(prefixes[0]);
+	bool matched = false;
 
 	for (int i = 0; i < prefix_count; ++i) {
 		if (0 == str_start_with(temp_address, prefixes[i])) {
+			matched = true;
 			address_data->data_code = data_codes[i];
 			int sub_str_len = sub_str_lens[i];
 
@@ -119,5 +123,5 @@ bool s7_analysis_address(const char* address, int length, siemens_s7_address_dat
 	}
 
 	dynstr_free(temp_address);
-	return true;
+	return matched;
 }

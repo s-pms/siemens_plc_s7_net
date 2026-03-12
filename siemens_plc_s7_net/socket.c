@@ -15,6 +15,14 @@
 #include <unistd.h>
 #endif
 
+static int socket_is_interrupted_error(void) {
+#ifdef _WIN32
+	return WSAGetLastError() == WSAEINTR;
+#else
+	return errno == EINTR;
+#endif
+}
+
 int socket_send_data(int fd, void* buf, int nbytes) {
 	int   nleft, nwritten;
 	char* ptr = (char*)buf;
@@ -25,7 +33,7 @@ int socket_send_data(int fd, void* buf, int nbytes) {
 	while (nleft > 0) {
 		nwritten = send(fd, ptr, nleft, 0);
 		if (nwritten <= 0) {
-			if (errno == EINTR)
+			if (socket_is_interrupted_error())
 				continue;
 			else
 				return -1;
@@ -52,7 +60,7 @@ int socket_recv_data(int fd, void* buf, int nbytes) {
 			break;
 		}
 		else if (nread < 0) {
-			if (errno == EINTR)
+			if (socket_is_interrupted_error())
 				continue;
 			else
 				return -1;
@@ -79,7 +87,7 @@ int socket_recv_data_one_loop(int fd, void* buf, int nbytes) {
 			break;
 		}
 		else if (nread < 0) {
-			if (errno == EINTR)
+			if (socket_is_interrupted_error())
 				continue;
 			else
 				return -1;
@@ -117,7 +125,7 @@ int socket_open_tcp_client_socket(char* destIp, short destPort) {
 
 	if (ret != 0) {
 		socket_close_tcp_socket(sockFd);
-		sockFd = -1;
+		return -1;
 	}
 
 #ifdef _WIN32
@@ -134,7 +142,7 @@ int socket_open_tcp_client_socket(char* destIp, short destPort) {
 }
 
 void socket_close_tcp_socket(int sockFd) {
-	if (sockFd > 0)
+	if (sockFd >= 0)
 	{
 #ifdef _WIN32
 		closesocket(sockFd);

@@ -380,17 +380,40 @@ bool read_data_from_core_server(int fd, byte_array_info send, byte_array_info* r
 	int real_sends = socket_send_data(fd, send.data, need_send);
 	if (real_sends == need_send)
 	{
-		byte temp[BUFFER_SIZE];
-		memset(temp, 0, BUFFER_SIZE);
+		byte header[4] = { 0 };
+		int header_size = socket_recv_data(fd, header, 4);
+		if (header_size != 4)
+			return false;
 
-		int recv_size = socket_recv_data_one_loop(fd, temp, BUFFER_SIZE);
+		int recv_size = ((int)header[2] << 8) | (int)header[3];
 		int min = 21;
 		if (recv_size >= min) //header size
 		{
+			byte* temp = (byte*)malloc(recv_size);
+			if (temp == NULL)
+				return false;
+
+			memcpy(temp, header, 4);
+			if (recv_size > 4)
+			{
+				int body_size = socket_recv_data(fd, temp + 4, recv_size - 4);
+				if (body_size != recv_size - 4)
+				{
+					RELEASE_DATA(temp);
+					return false;
+				}
+			}
+
 			ret->data = (byte*)malloc(recv_size);
+			if (ret->data == NULL)
+			{
+				RELEASE_DATA(temp);
+				return false;
+			}
 			memset(ret->data, 0, recv_size);
 			memcpy(ret->data, temp, recv_size);
 			ret->length = recv_size;
+			RELEASE_DATA(temp);
 
 			is_ok = true;
 		}

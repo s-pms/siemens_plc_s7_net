@@ -92,27 +92,36 @@ bool s7_disconnect(int fd)
 //////////////////////////////////////////////////////////////////////////
 s7_error_code_e s7_read_response(int fd, byte_array_info* response, int* read_count)
 {
-	if (fd <= 0 || read_count == 0 || response == NULL)
+	if (fd < 0 || read_count == NULL || response == NULL)
 		return S7_ERROR_CODE_INVALID_PARAMETER;
 
-	byte* temp = malloc(BUFFER_SIZE); // 动态分配缓冲区
+	byte header[4] = { 0 };
+	int header_size = socket_recv_data(fd, header, 4);
+	if (header_size != 4)
+		return S7_ERROR_CODE_FAILED;
+
+	int packet_size = ((int)header[2] << 8) | (int)header[3];
+	if (packet_size < 4)
+		return S7_ERROR_CODE_RESPONSE_HEADER_FAILED;
+
+	byte* temp = (byte*)malloc(packet_size);
 	if (temp == NULL)
 		return S7_ERROR_CODE_MALLOC_FAILED;
 
-	memset(temp, 0, BUFFER_SIZE);
-	response->data = temp;
-	response->length = BUFFER_SIZE;
-
-	*read_count = 0;
-	char* ptr = (char*)response->data;
-
-	if (fd <= 0 || response->length <= 0) return -1;
-	*read_count = (int)recv(fd, ptr, response->length, 0);
-
-	if (*read_count < 0) {
-		return S7_ERROR_CODE_FAILED;
+	memcpy(temp, header, 4);
+	if (packet_size > 4)
+	{
+		int body_size = socket_recv_data(fd, temp + 4, packet_size - 4);
+		if (body_size != packet_size - 4)
+		{
+			RELEASE_DATA(temp);
+			return S7_ERROR_CODE_FAILED;
+		}
 	}
-	response->length = *read_count;
+
+	response->data = temp;
+	response->length = packet_size;
+	*read_count = packet_size;
 
 	return S7_ERROR_CODE_SUCCESS;
 }
@@ -224,9 +233,9 @@ s7_error_code_e s7_remote_run(int fd)
 		return S7_ERROR_CODE_INVALID_PARAMETER;
 
 	s7_error_code_e ret = S7_ERROR_CODE_UNKOWN;
-	const byte* core_cmd_temp = g_s7_stop;
+	const byte* core_cmd_temp = g_s7_hot_start;
 
-	int core_cmd_len = sizeof(core_cmd_temp);
+	int core_cmd_len = sizeof(g_s7_hot_start);
 	byte* core_cmd = (byte*)malloc(core_cmd_len);
 	if (core_cmd == NULL)
 		return S7_ERROR_CODE_BUILD_CORE_CMD_FAILED;
@@ -249,7 +258,7 @@ s7_error_code_e s7_remote_run(int fd)
 	if (ret != S7_ERROR_CODE_SUCCESS)
 	{
 		RELEASE_DATA(response.data);
-		return false;
+		return ret;
 	}
 
 	if (recv_size < MIN_HEADER_SIZE) {
@@ -315,8 +324,10 @@ s7_error_code_e s7_remote_reset(int fd)
 	s7_error_code_e ret = S7_ERROR_CODE_UNKOWN;
 	byte core_cmd_temp[] = { 0x06, 0x10, 0x00, 0x00, 0x01, 0x00 };
 
-	int core_cmd_len = sizeof(core_cmd_temp) / sizeof(core_cmd_temp[0]);
+	int core_cmd_len = sizeof(core_cmd_temp);
 	byte* core_cmd = (byte*)malloc(core_cmd_len);
+	if (core_cmd == NULL)
+		return S7_ERROR_CODE_BUILD_CORE_CMD_FAILED;
 	memcpy(core_cmd, core_cmd_temp, core_cmd_len);
 
 	byte_array_info temp = { 0 };
@@ -382,14 +393,25 @@ s7_error_code_e s7_read_plc_type(int fd, char** type)
 		return S7_ERROR_CODE_RESPONSE_HEADER_FAILED;
 	}
 
+	if (recv_size < 91) {
+		RELEASE_DATA(response.data);
+		return S7_ERROR_CODE_RESPONSE_HEADER_FAILED;
+	}
+
 	out_bytes.length = 20;
 	out_bytes.data = (byte*)malloc(out_bytes.length + 1);
+	if (out_bytes.data == NULL) {
+		RELEASE_DATA(response.data);
+		return S7_ERROR_CODE_MALLOC_FAILED;
+	}
 	memset(out_bytes.data, 0, out_bytes.length + 1);
 	memcpy((char*)out_bytes.data, response.data + 71, out_bytes.length);
 	if (out_bytes.length > 0)
 	{
 		*type = (char*)out_bytes.data;
 	}
+
+	RELEASE_DATA(response.data);
 
 	return ret;
 }
