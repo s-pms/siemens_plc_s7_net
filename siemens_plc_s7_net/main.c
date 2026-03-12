@@ -35,7 +35,7 @@ int main(int argc, char** argv)
 
 	int fd = -1;
 	bool ret = s7_connect(plc_ip, plc_port, S1200, &fd);
-	if (ret && fd > 0)
+	if (ret && fd >= 0)
 	{
 		s7_error_code_e ret = S7_ERROR_CODE_FAILED;
 

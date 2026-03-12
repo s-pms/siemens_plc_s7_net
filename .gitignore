@@ -364,3 +364,4 @@ FodyWeavers.xsd
 
 *.o
 *.d
+s7_plc_test

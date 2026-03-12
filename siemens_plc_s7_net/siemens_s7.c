@@ -72,10 +72,10 @@ bool s7_connect(char* ip_addr, int port, siemens_plc_types_e plc, int* fd)
 	s7_initialization(plc, ip_addr);
 	*fd = temp_fd;
 
-	if (temp_fd > 0)
+	if (temp_fd >= 0)
 		ret = initialization_on_connect(temp_fd);
 
-	if (!ret && temp_fd > 0)
+	if (!ret && temp_fd >= 0)
 	{
 		socket_close_tcp_socket(temp_fd);
 		*fd = -1;
@@ -128,7 +128,7 @@ s7_error_code_e s7_read_response(int fd, byte_array_info* response, int* read_co
 
 s7_error_code_e s7_read_data(int fd, const char* address, int length, byte_array_info* out_bytes, bool is_bit)
 {
-	if (fd <= 0 || address == NULL || length <= 0 || out_bytes == NULL)
+	if (fd < 0 || address == NULL || length <= 0 || out_bytes == NULL)
 		return S7_ERROR_CODE_INVALID_PARAMETER;
 
 	siemens_s7_address_data address_data;
@@ -178,7 +178,7 @@ s7_error_code_e read_byte_value(int fd, const char* address, int length, byte_ar
 
 s7_error_code_e s7_write_data(int fd, const char* address, int length, byte_array_info in_bytes, bool is_bit, bool value)
 {
-	if (fd <= 0 || address == NULL || length <= 0)
+	if (fd < 0 || address == NULL || length <= 0)
 		return S7_ERROR_CODE_INVALID_PARAMETER;
 
 	siemens_s7_address_data address_data;
@@ -274,7 +274,7 @@ s7_error_code_e s7_remote_run(int fd)
 
 s7_error_code_e s7_remote_stop(int fd)
 {
-	if (fd <= 0)
+	if (fd < 0)
 		return S7_ERROR_CODE_INVALID_PARAMETER;
 
 	s7_error_code_e ret = S7_ERROR_CODE_UNKOWN;
@@ -318,7 +318,7 @@ s7_error_code_e s7_remote_stop(int fd)
 
 s7_error_code_e s7_remote_reset(int fd)
 {
-	if (fd <= 0)
+	if (fd < 0)
 		return S7_ERROR_CODE_INVALID_PARAMETER;
 
 	s7_error_code_e ret = S7_ERROR_CODE_UNKOWN;
@@ -362,7 +362,7 @@ s7_error_code_e s7_remote_reset(int fd)
 
 s7_error_code_e s7_read_plc_type(int fd, char** type)
 {
-	if (fd <= 0)
+	if (fd < 0)
 		return S7_ERROR_CODE_INVALID_PARAMETER;
 
 	s7_error_code_e ret = S7_ERROR_CODE_UNKOWN;
@@ -452,7 +452,7 @@ bool initialization_on_connect(int fd)
 
 s7_error_code_e s7_read_bool(int fd, const char* address, bool* val)
 {
-	if (fd <= 0 || address == NULL || strlen(address) == 0 || val == NULL)
+	if (fd < 0 || address == NULL || strlen(address) == 0 || val == NULL)
 		return S7_ERROR_CODE_INVALID_PARAMETER;
 
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
@@ -468,7 +468,7 @@ s7_error_code_e s7_read_bool(int fd, const char* address, bool* val)
 
 s7_error_code_e s7_read_byte(int fd, const char* address, byte* val)
 {
-	if (fd <= 0 || address == NULL || strlen(address) == 0 || val == NULL)
+	if (fd < 0 || address == NULL || strlen(address) == 0 || val == NULL)
 		return S7_ERROR_CODE_INVALID_PARAMETER;
 
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
@@ -484,7 +484,7 @@ s7_error_code_e s7_read_byte(int fd, const char* address, byte* val)
 
 s7_error_code_e s7_read_short(int fd, const char* address, short* val)
 {
-	if (fd <= 0 || address == NULL || strlen(address) == 0 || val == NULL)
+	if (fd < 0 || address == NULL || strlen(address) == 0 || val == NULL)
 		return S7_ERROR_CODE_INVALID_PARAMETER;
 
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
@@ -500,7 +500,7 @@ s7_error_code_e s7_read_short(int fd, const char* address, short* val)
 
 s7_error_code_e s7_read_ushort(int fd, const char* address, ushort* val)
 {
-	if (fd <= 0 || address == NULL || strlen(address) == 0 || val == NULL)
+	if (fd < 0 || address == NULL || strlen(address) == 0 || val == NULL)
 		return S7_ERROR_CODE_INVALID_PARAMETER;
 
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
@@ -516,7 +516,7 @@ s7_error_code_e s7_read_ushort(int fd, const char* address, ushort* val)
 
 s7_error_code_e s7_read_int32(int fd, const char* address, int32* val)
 {
-	if (fd <= 0 || address == NULL || strlen(address) == 0 || val == NULL)
+	if (fd < 0 || address == NULL || strlen(address) == 0 || val == NULL)
 		return S7_ERROR_CODE_INVALID_PARAMETER;
 
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
@@ -532,7 +532,7 @@ s7_error_code_e s7_read_int32(int fd, const char* address, int32* val)
 
 s7_error_code_e s7_read_uint32(int fd, const char* address, uint32* val)
 {
-	if (fd <= 0 || address == NULL || strlen(address) == 0 || val == NULL)
+	if (fd < 0 || address == NULL || strlen(address) == 0 || val == NULL)
 		return S7_ERROR_CODE_INVALID_PARAMETER;
 
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
@@ -548,7 +548,7 @@ s7_error_code_e s7_read_uint32(int fd, const char* address, uint32* val)
 
 s7_error_code_e s7_read_int64(int fd, const char* address, int64* val)
 {
-	if (fd <= 0 || address == NULL || strlen(address) == 0 || val == NULL)
+	if (fd < 0 || address == NULL || strlen(address) == 0 || val == NULL)
 		return S7_ERROR_CODE_INVALID_PARAMETER;
 
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
@@ -564,7 +564,7 @@ s7_error_code_e s7_read_int64(int fd, const char* address, int64* val)
 
 s7_error_code_e s7_read_uint64(int fd, const char* address, uint64* val)
 {
-	if (fd <= 0 || address == NULL || strlen(address) == 0 || val == NULL)
+	if (fd < 0 || address == NULL || strlen(address) == 0 || val == NULL)
 		return S7_ERROR_CODE_INVALID_PARAMETER;
 
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
@@ -580,7 +580,7 @@ s7_error_code_e s7_read_uint64(int fd, const char* address, uint64* val)
 
 s7_error_code_e s7_read_float(int fd, const char* address, float* val)
 {
-	if (fd <= 0 || address == NULL || strlen(address) == 0 || val == NULL)
+	if (fd < 0 || address == NULL || strlen(address) == 0 || val == NULL)
 		return S7_ERROR_CODE_INVALID_PARAMETER;
 
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
@@ -596,7 +596,7 @@ s7_error_code_e s7_read_float(int fd, const char* address, float* val)
 
 s7_error_code_e s7_read_double(int fd, const char* address, double* val)
 {
-	if (fd <= 0 || address == NULL || strlen(address) == 0 || val == NULL)
+	if (fd < 0 || address == NULL || strlen(address) == 0 || val == NULL)
 		return S7_ERROR_CODE_INVALID_PARAMETER;
 
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
@@ -612,7 +612,7 @@ s7_error_code_e s7_read_double(int fd, const char* address, double* val)
 
 s7_error_code_e s7_read_string(int fd, const char* address, int length, char** val)
 {
-	if (fd <= 0 || address == NULL || length <= 0 || strlen(address) == 0)
+	if (fd < 0 || address == NULL || length <= 0 || strlen(address) == 0)
 		return S7_ERROR_CODE_INVALID_PARAMETER;
 
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
@@ -632,7 +632,7 @@ s7_error_code_e s7_read_string(int fd, const char* address, int length, char** v
 
 s7_error_code_e s7_write_bool(int fd, const char* address, bool val)
 {
-	if (fd <= 0 || address == NULL || strlen(address) == 0)
+	if (fd < 0 || address == NULL || strlen(address) == 0)
 		return S7_ERROR_CODE_INVALID_PARAMETER;
 
 	return write_bit_value(fd, address, 1, val);
@@ -640,7 +640,7 @@ s7_error_code_e s7_write_bool(int fd, const char* address, bool val)
 
 s7_error_code_e s7_write_byte(int fd, const char* address, byte val)
 {
-	if (fd <= 0 || address == NULL || strlen(address) == 0)
+	if (fd < 0 || address == NULL || strlen(address) == 0)
 		return S7_ERROR_CODE_INVALID_PARAMETER;
 
 	int write_len = 1;
@@ -655,7 +655,7 @@ s7_error_code_e s7_write_byte(int fd, const char* address, byte val)
 
 s7_error_code_e s7_write_short(int fd, const char* address, short val)
 {
-	if (fd <= 0 || address == NULL || strlen(address) == 0)
+	if (fd < 0 || address == NULL || strlen(address) == 0)
 		return S7_ERROR_CODE_INVALID_PARAMETER;
 
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
@@ -673,7 +673,7 @@ s7_error_code_e s7_write_short(int fd, const char* address, short val)
 
 s7_error_code_e s7_write_ushort(int fd, const char* address, ushort val)
 {
-	if (fd <= 0 || address == NULL || strlen(address) == 0)
+	if (fd < 0 || address == NULL || strlen(address) == 0)
 		return S7_ERROR_CODE_INVALID_PARAMETER;
 
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
@@ -691,7 +691,7 @@ s7_error_code_e s7_write_ushort(int fd, const char* address, ushort val)
 
 s7_error_code_e s7_write_int32(int fd, const char* address, int32 val)
 {
-	if (fd <= 0 || address == NULL || strlen(address) == 0)
+	if (fd < 0 || address == NULL || strlen(address) == 0)
 		return S7_ERROR_CODE_INVALID_PARAMETER;
 
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
@@ -709,7 +709,7 @@ s7_error_code_e s7_write_int32(int fd, const char* address, int32 val)
 
 s7_error_code_e s7_write_uint32(int fd, const char* address, uint32 val)
 {
-	if (fd <= 0 || address == NULL || strlen(address) == 0)
+	if (fd < 0 || address == NULL || strlen(address) == 0)
 		return S7_ERROR_CODE_INVALID_PARAMETER;
 
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
@@ -727,7 +727,7 @@ s7_error_code_e s7_write_uint32(int fd, const char* address, uint32 val)
 
 s7_error_code_e s7_write_int64(int fd, const char* address, int64 val)
 {
-	if (fd <= 0 || address == NULL || strlen(address) == 0)
+	if (fd < 0 || address == NULL || strlen(address) == 0)
 		return S7_ERROR_CODE_INVALID_PARAMETER;
 
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
@@ -745,7 +745,7 @@ s7_error_code_e s7_write_int64(int fd, const char* address, int64 val)
 
 s7_error_code_e s7_write_uint64(int fd, const char* address, uint64 val)
 {
-	if (fd <= 0 || address == NULL || strlen(address) == 0)
+	if (fd < 0 || address == NULL || strlen(address) == 0)
 		return S7_ERROR_CODE_INVALID_PARAMETER;
 
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
@@ -763,7 +763,7 @@ s7_error_code_e s7_write_uint64(int fd, const char* address, uint64 val)
 
 s7_error_code_e s7_write_float(int fd, const char* address, float val)
 {
-	if (fd <= 0 || address == NULL || strlen(address) == 0)
+	if (fd < 0 || address == NULL || strlen(address) == 0)
 		return S7_ERROR_CODE_INVALID_PARAMETER;
 
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
@@ -781,7 +781,7 @@ s7_error_code_e s7_write_float(int fd, const char* address, float val)
 
 s7_error_code_e s7_write_double(int fd, const char* address, double val)
 {
-	if (fd <= 0 || address == NULL || strlen(address) == 0)
+	if (fd < 0 || address == NULL || strlen(address) == 0)
 		return S7_ERROR_CODE_INVALID_PARAMETER;
 
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
@@ -799,7 +799,7 @@ s7_error_code_e s7_write_double(int fd, const char* address, double val)
 
 s7_error_code_e s7_write_string(int fd, const char* address, int length, const char* val)
 {
-	if (fd <= 0 || address == NULL || strlen(address) == 0 || val == NULL)
+	if (fd < 0 || address == NULL || strlen(address) == 0 || val == NULL)
 		return S7_ERROR_CODE_INVALID_PARAMETER;
 
 	s7_error_code_e ret = S7_ERROR_CODE_FAILED;
