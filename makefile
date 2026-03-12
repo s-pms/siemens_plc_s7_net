@@ -1,4 +1,7 @@
 
+
+.PHONY: all tests clean
+
 include config.mk
 all:
 #-C是指定目录
@@ -13,9 +16,14 @@ all:
 		make -C $$dir; \
 	done
 
+tests:
+	make -C tests clean
+	make -C tests
+
 
 clean:
 #-rf：删除文件夹，强制删除
 	rm -rf app/link_obj app/dep nginx
 	rm -rf signal/*.gch app/*.gch
+	make -C tests clean
 
