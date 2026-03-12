@@ -34,6 +34,9 @@ byte_array_info build_read_byte_command(siemens_s7_address_data address)
 {
 	const ushort command_len = 19 + 12;	// head + block
 	byte* command = (byte*)malloc(command_len);
+	if (command == NULL)
+		return (byte_array_info) { 0 };
+
 	build_command_header(command, command_len, 0x04);
 
 	// 指定有效值类型 -> Specify a valid value type
@@ -87,6 +90,9 @@ byte_array_info build_read_bit_command(siemens_s7_address_data address)
 {
 	const ushort command_len = 19 + 12;	// head + block
 	byte* command = (byte*)malloc(command_len);
+	if (command == NULL)
+		return (byte_array_info) { 0 };
+
 	build_command_header(command, command_len, 0x04);
 
 	// 读取地址的前缀 -> Read the prefix of the address
@@ -122,6 +128,9 @@ byte_array_info build_write_byte_command(siemens_s7_address_data address, byte_a
 
 	const ushort command_len = 35 + val_len;
 	byte* command = (byte*)malloc(command_len);
+	if (command == NULL)
+		return (byte_array_info) { 0 };
+
 	build_command_header(command, command_len, 0x05);
 
 	// 写入长度+4 -> Write Length +4
@@ -186,6 +195,9 @@ byte_array_info build_write_bit_command(siemens_s7_address_data address, bool va
 
 	const ushort command_len = 35 + buffer_len;
 	byte* command = (byte*)malloc(command_len);
+	if (command == NULL)
+		return (byte_array_info) { 0 };
+
 	build_command_header(command, command_len, 0x05);
 
 	// 写入长度+4 -> Write Length +4
@@ -275,6 +287,10 @@ s7_error_code_e s7_analysis_read_bit(byte_array_info response, byte_array_info* 
 		}
 
 		ret->data = (byte*)malloc(1);
+		if (ret->data == NULL)
+		{
+			return S7_ERROR_CODE_MALLOC_FAILED;
+		}
 		memset(ret->data, 0, 1);
 		memcpy(ret->data, buffer, 1);
 		ret->length = 1;
@@ -341,6 +357,10 @@ s7_error_code_e s7_analysis_read_byte(byte_array_info response, byte_array_info*
 		}
 
 		ret->data = (byte*)malloc(buffer_length);
+		if (ret->data == NULL)
+		{
+			return S7_ERROR_CODE_MALLOC_FAILED;
+		}
 		memset(ret->data, 0, buffer_length);
 		memcpy(ret->data, buffer, buffer_length);
 		ret->length = buffer_length;
