@@ -1,3 +1,10 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2022-2026 wqliceman
+ * GitHub: iceman
+ * Email: wqliceman@gmail.com
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>

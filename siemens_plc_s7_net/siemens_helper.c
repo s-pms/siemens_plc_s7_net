@@ -1,3 +1,10 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2022-2026 wqliceman
+ * GitHub: iceman
+ * Email: wqliceman@gmail.com
+ */
+
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,7 +13,7 @@
 
 #define BUFFER_SIZE 1024
 
-// 提取公共的命令头部构建逻辑
+// Extract common command header building logic
 static void build_command_header(byte* command, ushort command_len, byte command_type) {
 	command[0] = 0x03;
 	command[1] = 0x00;
@@ -29,7 +36,7 @@ static void build_command_header(byte* command, ushort command_len, byte command
 	command[18] = 0x01;
 }
 
-// 从地址构造核心报文
+// Build core packet from address
 byte_array_info build_read_byte_command(siemens_s7_address_data address)
 {
 	const ushort command_len = 19 + 12;	// head + block
@@ -39,17 +46,17 @@ byte_array_info build_read_byte_command(siemens_s7_address_data address)
 
 	build_command_header(command, command_len, 0x04);
 
-	// 指定有效值类型 -> Specify a valid value type
+	// Specify valid value type
 	command[19] = 0x12;
-	// 接下来本次地址访问长度 -> The next time the address access length
+	// Address access length for this request
 	command[20] = 0x0A;
-	// 语法标记，ANY -> Syntax tag, any
+	// Syntax tag, ANY
 	command[21] = 0x10;
-	// 按字为单位 -> by word
+	// Unit: word
 	if (address.data_code == 0x1E || address.data_code == 0x1F)
 	{
 		command[22] = address.data_code;
-		// 访问数据的个数 -> Number of Access data
+		// Number of data items to access
 		command[23] = (byte)(address.length / 2 / 256);
 		command[24] = (byte)(address.length / 2 % 256);
 	}
@@ -57,7 +64,7 @@ byte_array_info build_read_byte_command(siemens_s7_address_data address)
 	{
 		if (address.data_code == 0x06 || address.data_code == 0x07)
 		{
-			// 访问数据的个数 -> Number of Access data
+			// Number of data items to access
 			command[22] = 0x04;
 			command[23] = (byte)(address.length / 2 / 256);
 			command[24] = (byte)(address.length / 2 % 256);
@@ -65,17 +72,17 @@ byte_array_info build_read_byte_command(siemens_s7_address_data address)
 		else
 		{
 			command[22] = 0x02;
-			// 访问数据的个数 -> Number of Access data
+			// Number of data items to access
 			command[23] = (byte)(address.length / 256);
 			command[24] = (byte)(address.length % 256);
 		}
 	}
-	// DB块编号，如果访问的是DB块的话 -> DB block number, if you are accessing a DB block
+	// DB block number
 	command[25] = (byte)(address.db_block / 256);
 	command[26] = (byte)(address.db_block % 256);
-	// 访问数据类型 -> Accessing data types
+	// Data type to access
 	command[27] = address.data_code;
-	// 偏移位置 -> Offset position
+	// Offset position
 	command[28] = (byte)(address.address_start / 256 / 256 % 256);
 	command[29] = (byte)(address.address_start / 256 % 256);
 	command[30] = (byte)(address.address_start % 256);
@@ -95,21 +102,21 @@ byte_array_info build_read_bit_command(siemens_s7_address_data address)
 
 	build_command_header(command, command_len, 0x04);
 
-	// 读取地址的前缀 -> Read the prefix of the address
+	// Read address prefix
 	command[19] = 0x12;
 	command[20] = 0x0A;
 	command[21] = 0x10;
-	// 读取的数据时位 -> Data read-time bit
+	// Data read: bit mode
 	command[22] = 0x01;
-	// 访问数据的个数 -> Number of Access data
+	// Number of data items to access
 	command[23] = 0x00;
 	command[24] = 0x01;
-	// DB块编号，如果访问的是DB块的话 -> DB block number, if you are accessing a DB block
+	// DB block number
 	command[25] = (byte)(address.db_block / 256);
 	command[26] = (byte)(address.db_block % 256);
-	// 访问数据类型 -> Types of reading data
+	// Data type to access
 	command[27] = address.data_code;
-	// 偏移位置 -> Offset position
+	// Offset position
 	command[28] = (byte)(address.address_start / 256 / 256 % 256);
 	command[29] = (byte)(address.address_start / 256 % 256);
 	command[30] = (byte)(address.address_start % 256);
@@ -133,46 +140,46 @@ byte_array_info build_write_byte_command(siemens_s7_address_data address, byte_a
 
 	build_command_header(command, command_len, 0x05);
 
-	// 写入长度+4 -> Write Length +4
+	// Write length + 4
 	command[15] = (byte)((4 + val_len) / 256);
 	command[16] = (byte)((4 + val_len) % 256);
-	// 读写指令 -> Read and write instructions
+	// Read/write instruction
 	command[17] = 0x05;
-	// 写入数据块个数 -> Number of data blocks written
+	// Number of data blocks to write
 	command[18] = 0x01;
-	// 固定，返回数据长度 -> Fixed, return data length
+	// Fixed, return data length
 	command[19] = 0x12;
 	command[20] = 0x0A;
 	command[21] = 0x10;
 	if (address.data_code == 0x06 || address.data_code == 0x07)
 	{
-		// 写入方式，1是按位，2是按字 -> Write mode, 1 is bitwise, 2 is by byte, 4 is by word
+		// Write mode: 1=bitwise, 2=byte, 4=word
 		command[22] = 0x04;
-		// 写入数据的个数 -> Number of Write Data
+		// Number of data items to write
 		command[23] = (byte)(val_len / 2 / 256);
 		command[24] = (byte)(val_len / 2 % 256);
 	}
 	else
 	{
-		// 写入方式，1是按位，2是按字 -> Write mode, 1 is bitwise, 2 is by word
+		// Write mode: 1=bitwise, 2=byte, 4=word
 		command[22] = 0x02;
-		// 写入数据的个数 -> Number of Write Data
+		// Number of data items to write
 		command[23] = (byte)(val_len / 256);
 		command[24] = (byte)(val_len % 256);
 	}
-	// DB块编号，如果访问的是DB块的话 -> DB block number, if you are accessing a DB block
+	// DB block number
 	command[25] = (byte)(address.db_block / 256);
 	command[26] = (byte)(address.db_block % 256);
-	// 写入数据的类型 -> Types of writing data
+	// Data type to write
 	command[27] = address.data_code;
-	// 偏移位置 -> Offset position
+	// Offset position
 	command[28] = (byte)(address.address_start / 256 / 256 % 256); ;
 	command[29] = (byte)(address.address_start / 256 % 256);
 	command[30] = (byte)(address.address_start % 256);
-	// 按字写入 -> Write by Word
+	// Write by word
 	command[31] = 0x00;
 	command[32] = 0x04;
-	// 按位计算的长度 -> The length of the bitwise calculation
+	// Bit-count length
 	command[33] = (byte)(val_len * 8 / 256);
 	command[34] = (byte)(val_len * 8 % 256);
 
@@ -200,31 +207,31 @@ byte_array_info build_write_bit_command(siemens_s7_address_data address, bool va
 
 	build_command_header(command, command_len, 0x05);
 
-	// 写入长度+4 -> Write Length +4
+	// Write length + 4
 	command[15] = (byte)((4 + buffer_len) / 256);
 	command[16] = (byte)((4 + buffer_len) % 256);
-	// 命令起始符 -> Command start character
+	// Command start marker
 	command[17] = 0x05;
-	// 写入数据块个数 -> Number of data blocks written
+	// Number of data blocks to write
 	command[18] = 0x01;
 	command[19] = 0x12;
 	command[20] = 0x0A;
 	command[21] = 0x10;
-	// 写入方式，1是按位，2是按字 -> Write mode, 1 is bitwise, 2 is by word
+	// Write mode: 1=bitwise, 2=byte, 4=word
 	command[22] = 0x01;
-	// 写入数据的个数 -> Number of Write Data
+	// Number of data items to write
 	command[23] = (byte)(buffer_len / 256);
 	command[24] = (byte)(buffer_len % 256);
-	// DB块编号，如果访问的是DB块的话 -> DB block number, if you are accessing a DB block
+	// DB block number
 	command[25] = (byte)(address.db_block / 256);
 	command[26] = (byte)(address.db_block % 256);
-	// 写入数据的类型 -> Types of writing data
+	// Data type to write
 	command[27] = address.data_code;
-	// 偏移位置 -> Offset position
+	// Offset position
 	command[28] = (byte)(address.address_start / 256 / 256);
 	command[29] = (byte)(address.address_start / 256);
 	command[30] = (byte)(address.address_start % 256);
-	// 按位写入 -> Bitwise Write
+	// Bitwise write
 	if (address.data_code == 0x1C)
 	{
 		command[31] = 0x00;
@@ -235,7 +242,7 @@ byte_array_info build_write_bit_command(siemens_s7_address_data address, bool va
 		command[31] = 0x00;
 		command[32] = 0x03;
 	}
-	// 按位计算的长度 -> The length of the bitwise calculation
+	// Bit-count length
 	command[33] = (byte)(buffer_len / 256);
 	command[34] = (byte)(buffer_len % 256);
 
@@ -247,12 +254,7 @@ byte_array_info build_write_bit_command(siemens_s7_address_data address, bool va
 	return ret;
 }
 
-/// <summary>
-/// 读取BOOL时，根据S7协议的返回报文，正确提取出实际的数据内容
-/// </summary>
-/// <param name="response"></param>
-/// <param name="ret"></param>
-/// <returns></returns>
+// Extract actual data content from the S7 protocol response when reading a BOOL value
 s7_error_code_e s7_analysis_read_bit(byte_array_info response, byte_array_info* ret)
 {
 	s7_error_code_e ret_code = S7_ERROR_CODE_SUCCESS;
@@ -469,7 +471,7 @@ bool try_send_data_to_server(int fd, byte_array_info* in_bytes, int* real_sends)
 		if (*real_sends == need_send) {
 			break;
 		}
-		// 处理发送失败的逻辑，例如重试或记录错误
+		// Handle send failure, e.g. retry or record an error.
 		retry_times++;
 	}
 

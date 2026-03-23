@@ -1,3 +1,10 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2022-2026 wqliceman
+ * GitHub: iceman
+ * Email: wqliceman@gmail.com
+ */
+
 #include "siemens_helper.h"
 #include "siemens_s7.h"
 #include "siemens_s7_private.h"
@@ -429,7 +436,7 @@ bool initialization_on_connect(int fd)
 	byte_array_info ret;
 	bool is_ok = false;
 
-	// 第一次握手 -> First handshake
+	// First handshake.
 	byte_array_info temp = { 0 };
 	temp.data = g_plc_head1;
 	temp.length = sizeof(g_plc_head1);
@@ -439,20 +446,20 @@ bool initialization_on_connect(int fd)
 	else
 		if (NULL != ret.data) free(ret.data);
 
-	// 第二次握手 -> Second handshake
+	// Second handshake.
 	temp.data = g_plc_head2;
 	temp.length = sizeof(g_plc_head2);
 	is_ok = read_data_from_core_server(fd, temp, &ret);
 	if (!is_ok)
 		return false;
 
-	// 调整单次接收的pdu长度信息
+	// Update the negotiated PDU length for single receive operations.
 	g_pdu_length = ntohs(bytes2ushort(ret.data + ret.length - 2)) - 28;
 	if (g_pdu_length < 200) g_pdu_length = 200;
 
 	if (NULL != ret.data) free(ret.data);
 
-	// 返回成功的信号 -> Return a successful signal
+	// Return success.
 	return true;
 }
 

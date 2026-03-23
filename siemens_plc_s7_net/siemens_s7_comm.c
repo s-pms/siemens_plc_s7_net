@@ -1,14 +1,20 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2022-2026 wqliceman
+ * GitHub: iceman
+ * Email: wqliceman@gmail.com
+ */
+
 #include "siemens_s7_comm.h"
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
 /// <summary>
-/// 计算特殊的地址信息
+/// Validate whether a text segment is a pure decimal number.
 /// </summary>
-/// <param name="address">字符串地址</param>
-/// <param name="isCT">是否是定时器和计数器的地址</param>
-/// <returns></returns>
+/// <param name="text">Input text segment.</param>
+/// <returns>True if all characters are decimal digits; otherwise false.</returns>
 static bool is_decimal_text(const char* text)
 {
 	// Address segments are numeric-only; reject mixed tokens early to avoid silent truncation.

@@ -1,3 +1,10 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2022-2026 wqliceman
+ * GitHub: iceman
+ * Email: wqliceman@gmail.com
+ */
+
 #include "socket.h"
 #include <stdio.h>
 #include <string.h>
@@ -116,7 +123,7 @@ int socket_send_data(int fd, void* buf, int nbytes) {
 				return -1;
 		}
 		else {
-			nleft -= nwritten;
+				// Currently this function performs only one receive loop by design.
 			ptr += nwritten;
 		}
 	}
@@ -173,7 +180,7 @@ int socket_recv_data_one_loop(int fd, void* buf, int nbytes) {
 			nleft -= nread;
 			ptr += nread;
 
-			// 目前只接收一次
+			// Currently this function performs only one receive loop by design.
 			break;
 		}
 	}

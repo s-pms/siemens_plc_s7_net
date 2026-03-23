@@ -1,3 +1,10 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2022-2026 wqliceman
+ * GitHub: iceman
+ * Email: wqliceman@gmail.com
+ */
+
 #ifndef __UTILL_H__
 #define __UTILL_H__
 
@@ -6,13 +13,13 @@
 #define RELEASE_DATA(data) do { if ((data) != NULL) { free(data); (data) = NULL; } } while(0)
 
 typedef struct _tag_byte_array_info {
-	byte* data;	// 内容
-	int length; // 长度
+	byte* data;	// Data buffer
+	int length; // Buffer length
 }byte_array_info;
 
 typedef struct _tag_bool_array_info {
-	bool* data;	// 内容
-	int length; // 长度
+	bool* data;	// Data buffer
+	int length; // Buffer length
 }bool_array_info;
 
 void short2bytes(short i, byte* bytes);

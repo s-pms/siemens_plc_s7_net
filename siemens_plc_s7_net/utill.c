@@ -1,3 +1,10 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2022-2026 wqliceman
+ * GitHub: iceman
+ * Email: wqliceman@gmail.com
+ */
+
 #include "utill.h"
 #include <stdlib.h>
 #include <string.h>
@@ -147,7 +154,8 @@ void str_tolower(char* input)
 }
 
 /**
-* ×Ö·û´®originÒÔ×Ö·û´®prefix¿ªÍ·£¬·µ»Ø0£»·ñÔò·µ»Ø1£»Òì³£·µ»Ø-1
+* Check whether origin starts with prefix.
+* Return 0 if matched, 1 if not matched, and -1 on invalid input.
 */
 int str_start_with(const char* origin, const char* prefix)
 {
@@ -168,7 +176,8 @@ int str_start_with(const char* origin, const char* prefix)
 }
 
 /**
-* ×Ö·û´®originÒÔ×Ö·û´®end½áÎ²£¬·µ»Ø0£»·ñÔò·µ»Ø1£»Òì³£·µ»Ø-1
+* Check whether origin ends with end.
+* Return 0 if matched, 1 if not matched, and -1 on invalid input.
 */
 int str_end_with(const char* origin, char* end)
 {

@@ -2,6 +2,12 @@
 
 # 程序整体介绍
 
+## 版权与作者信息
+
+- 开源协议：MIT License
+- GitHub：iceman
+- 邮箱：wqliceman@gmail.com
+
 - 项目名称：siemens_plc_s7_net
 - 开发语言：C语言
 - 支持操作系统：windows/linux

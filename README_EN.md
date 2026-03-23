@@ -1,5 +1,11 @@
 # Overall Program Introduction
 
+## Copyright And Contact
+
+- License: MIT License
+- GitHub: iceman
+- Email: wqliceman@gmail.com
+
 - Project Name: siemens_plc_s7_net
 - Development Language: C
 - Supported Operating Systems: Windows/Linux
