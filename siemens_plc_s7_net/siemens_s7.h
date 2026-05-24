@@ -28,6 +28,7 @@ int get_plc_dest_TSAP();
 void set_plc_dest_TSAP(int tasp);
 
 int get_plc_PDU_length();
+int s7_get_pdu_length(int fd);
 
 /////////////////////////////////////////////////////////////
 

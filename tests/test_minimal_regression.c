@@ -17,7 +17,13 @@
 #endif
 
 #include "../siemens_plc_s7_net/siemens_s7_comm.h"
+#include "../siemens_plc_s7_net/siemens_helper.h"
 #include "../siemens_plc_s7_net/siemens_s7.h"
+
+extern byte g_plc_head1[22];
+extern byte g_plc_head2[25];
+extern void s7_initialization(siemens_plc_types_e plc, char* ip);
+extern bool initialization_on_connect(int fd);
 
 static int g_failed = 0;
 
@@ -81,6 +87,16 @@ static void build_success_write_response(unsigned char response[22]) {
 	response[21] = 0xFF;
 }
 
+static void build_handshake_response(unsigned char* response, int response_length, unsigned short negotiated_pdu_length) {
+	memset(response, 0, (size_t)response_length);
+	response[0] = 0x03;
+	response[1] = 0x00;
+	response[2] = (unsigned char)((unsigned int)response_length >> 8);
+	response[3] = (unsigned char)(response_length & 0xFF);
+	response[response_length - 2] = (unsigned char)((unsigned int)(negotiated_pdu_length + 28) >> 8);
+	response[response_length - 1] = (unsigned char)((negotiated_pdu_length + 28) & 0xFF);
+}
+
 static int drain_tpkt_request(int fd) {
 	unsigned char header[4] = { 0 };
 	if (read_exact(fd, header, 4) != 4) {
@@ -142,6 +158,47 @@ static int verify_command_roundtrip(s7_error_code_e (*command_fn)(int), const un
 	s7_error_code_e ret = command_fn(fds[0]);
 	close(fds[0]);
 	return ret == S7_ERROR_CODE_SUCCESS && wait_child_success(pid);
+}
+
+static int open_initialized_peer(int negotiated_pdu_length, int* client_fd) {
+	int fds[2] = { -1, -1 };
+	if (client_fd == NULL || create_socket_pair(fds) != 0) {
+		return 0;
+	}
+
+	pid_t pid = fork();
+	if (pid < 0) {
+		close(fds[0]);
+		close(fds[1]);
+		return 0;
+	}
+
+	if (pid == 0) {
+		unsigned char first_response[22];
+		unsigned char second_response[25];
+		int exit_code = 1;
+
+		close(fds[0]);
+		build_handshake_response(first_response, (int)sizeof(first_response), 240);
+		build_handshake_response(second_response, (int)sizeof(second_response), (unsigned short)negotiated_pdu_length);
+
+		if (drain_tpkt_request(fds[1]) && write_exact(fds[1], first_response, (int)sizeof(first_response)) == (int)sizeof(first_response) &&
+			drain_tpkt_request(fds[1]) && write_exact(fds[1], second_response, (int)sizeof(second_response)) == (int)sizeof(second_response)) {
+			exit_code = 0;
+		}
+
+		close(fds[1]);
+		_exit(exit_code);
+	}
+
+	close(fds[1]);
+	if (!initialization_on_connect(fds[0]) || !wait_child_success(pid)) {
+		close(fds[0]);
+		return 0;
+	}
+
+	*client_fd = fds[0];
+	return 1;
 }
 #endif
 
@@ -233,6 +290,115 @@ static void test_malformed_header_guard(void) {
 #endif
 }
 
+static void test_read_byte_segment_bounds(void) {
+	byte raw_response[40] = { 0 };
+	byte_array_info response = { raw_response, (int)sizeof(raw_response) };
+	byte_array_info parsed = { 0 };
+
+	/*
+	 * Craft a byte-read item whose declared payload exceeds the actual frame body.
+	 * A robust parser must reject it instead of reading past the received packet.
+	 */
+	raw_response[21] = 0xFF;
+	raw_response[22] = 0x04;
+	raw_response[23] = 0x00;
+	raw_response[24] = 0x40; /* 64 bits => 8 payload bytes */
+	raw_response[25] = 0x11;
+	raw_response[26] = 0x22;
+
+	EXPECT_TRUE(
+		"read_byte: truncated payload rejected",
+		s7_analysis_read_byte(response, &parsed) == S7_ERROR_CODE_RESPONSE_HEADER_FAILED);
+	EXPECT_TRUE("read_byte: no buffer allocated on truncated payload", parsed.data == NULL && parsed.length == 0);
+}
+
+static void test_initialization_resets_standard_headers(void) {
+	static const byte expected_head1[] = {
+		0x03, 0x00, 0x00, 0x16, 0x11, 0xE0, 0x00, 0x00, 0x00, 0x01,
+		0x00, 0xC0, 0x01, 0x0A, 0xC1, 0x02, 0x01, 0x02, 0xC2, 0x02,
+		0x01, 0x00
+	};
+	static const byte expected_head2[] = {
+		0x03, 0x00, 0x00, 0x19, 0x02, 0xF0, 0x80, 0x32, 0x01, 0x00,
+		0x00, 0x04, 0x00, 0x00, 0x08, 0x00, 0x00, 0xF0, 0x00, 0x00,
+		0x01, 0x00, 0x01, 0x01, 0xE0
+	};
+	char ip[] = "127.0.0.1";
+
+	s7_initialization(S200Smart, ip);
+	s7_initialization(S1200, ip);
+
+	EXPECT_TRUE(
+		"init: standard head1 restored after S200Smart",
+		memcmp(g_plc_head1, expected_head1, sizeof(expected_head1)) == 0);
+	EXPECT_TRUE(
+		"init: standard head2 restored after S200Smart",
+		memcmp(g_plc_head2, expected_head2, sizeof(expected_head2)) == 0);
+}
+
+static void test_connect_parameter_guard(void) {
+	int fd = 1234;
+
+	EXPECT_TRUE("connect: null fd rejected", !s7_connect("127.0.0.1", 102, S1200, NULL));
+
+	fd = 1234;
+	EXPECT_TRUE("connect: null ip rejected", !s7_connect(NULL, 102, S1200, &fd) && fd == -1);
+
+	fd = 1234;
+	EXPECT_TRUE("connect: empty ip rejected", !s7_connect("", 102, S1200, &fd) && fd == -1);
+
+	fd = 1234;
+	EXPECT_TRUE("connect: zero port rejected", !s7_connect("127.0.0.1", 0, S1200, &fd) && fd == -1);
+
+	fd = 1234;
+	EXPECT_TRUE("connect: overflow port rejected", !s7_connect("127.0.0.1", 70000, S1200, &fd) && fd == -1);
+}
+
+static void test_initialization_preserves_standard_configuration(void) {
+	char ip[] = "127.0.0.1";
+
+	set_plc_connection_type(0x03);
+	set_plc_rack(0x01);
+	set_plc_slot(0x02);
+	set_plc_local_TSAP(0x1234);
+
+	s7_initialization(S1200, ip);
+
+	EXPECT_TRUE("init: standard connection type preserved", get_plc_connection_type() == 0x03);
+	EXPECT_TRUE("init: standard local TSAP preserved", get_plc_local_TSAP() == 0x1234);
+	EXPECT_TRUE("init: standard dest TSAP preserved", get_plc_dest_TSAP() == 0x0322);
+
+	set_plc_connection_type(0x01);
+	set_plc_rack(0x00);
+	set_plc_slot(0x00);
+	set_plc_local_TSAP(0x0102);
+	set_plc_dest_TSAP(0x0100);
+}
+
+static void test_connection_scoped_pdu_length(void) {
+#ifdef _WIN32
+	EXPECT_TRUE("pdu: connection scoped test skipped on Windows", true);
+#else
+	int fd_one = -1;
+	int fd_two = -1;
+
+	EXPECT_TRUE("pdu: first handshake succeeds", open_initialized_peer(240, &fd_one));
+	EXPECT_TRUE("pdu: second handshake succeeds", open_initialized_peer(480, &fd_two));
+	EXPECT_TRUE("pdu: first connection retains its negotiated length", s7_get_pdu_length(fd_one) == 240);
+	EXPECT_TRUE("pdu: second connection retains its negotiated length", s7_get_pdu_length(fd_two) == 480);
+	EXPECT_TRUE("pdu: legacy getter tracks latest connection", get_plc_PDU_length() == 480);
+
+	if (fd_one >= 0) {
+		s7_disconnect(fd_one);
+		EXPECT_TRUE("pdu: disconnected first connection removed", s7_get_pdu_length(fd_one) == 0);
+	}
+	if (fd_two >= 0) {
+		s7_disconnect(fd_two);
+		EXPECT_TRUE("pdu: disconnected second connection removed", s7_get_pdu_length(fd_two) == 0);
+	}
+#endif
+}
+
 static void test_remote_run_stop_packet_path(void) {
 #ifdef _WIN32
 	EXPECT_TRUE("remote_run/stop: protocol packet tests skipped on Windows", true);
@@ -261,6 +427,11 @@ int main(void) {
 	test_address_parser();
 	test_short_packet_guard();
 	test_malformed_header_guard();
+	test_read_byte_segment_bounds();
+	test_initialization_resets_standard_headers();
+	test_connect_parameter_guard();
+	test_initialization_preserves_standard_configuration();
+	test_connection_scoped_pdu_length();
 	test_remote_run_stop_packet_path();
 
 	if (g_failed == 0) {

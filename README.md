@@ -166,6 +166,14 @@ int get_plc_PDU_length();
  * 返回值:
  *   PLC的PDU长度
  */
+
+int s7_get_pdu_length(int fd);
+/* 按连接获取PLC的PDU长度
+ * 参数:
+ *   fd: 连接PLC的文件描述符
+ * 返回值:
+ *   该连接协商后的PDU长度；若连接未知则返回0
+ */
 ```
 
 ### 2.读取数据

@@ -163,6 +163,14 @@ int get_plc_PDU_length();
  * Return Value:
  *   Returns the PDU length of the PLC
  */
+
+int s7_get_pdu_length(int fd);
+/* Retrieves the negotiated PDU length for a specific PLC connection
+ * Parameters:
+ *   fd: The file descriptor of the PLC connection
+ * Return Value:
+ *   Returns the negotiated PDU length for that connection; returns 0 if the connection is unknown
+ */
 ```
 
 ### 2. Reading Data

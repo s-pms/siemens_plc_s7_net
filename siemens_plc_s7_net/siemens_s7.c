@@ -30,51 +30,220 @@ ushort word_length = 2;
 int port = 102;
 char ip_address[64] = { 0 };
 
-void s7_initialization(siemens_plc_types_e plc, char* ip)
+typedef struct _tag_s7_pdu_registry_node {
+	int fd;
+	int pdu_length;
+	struct _tag_s7_pdu_registry_node* next;
+} s7_pdu_registry_node;
+
+static s7_pdu_registry_node* g_s7_pdu_registry = NULL;
+
+static byte g_plc_head1_s1200_config[22] =
 {
-	word_length = 2;
-	strcpy(ip_address, ip);
-	current_plc = plc;
+	0x03,0x00,0x00,0x16,0x11,0xE0,0x00,0x00,0x00,0x01,
+	0x00,0xC0,0x01,0x0A,0xC1,0x02,0x01,0x02,0xC2,0x02,
+	0x01,0x00
+};
+
+static byte g_plc_head1_s300_config[22] =
+{
+	0x03,0x00,0x00,0x16,0x11,0xE0,0x00,0x00,0x00,0x01,
+	0x00,0xC0,0x01,0x0A,0xC1,0x02,0x01,0x02,0xC2,0x02,
+	0x01,0x02
+};
+
+static byte g_plc_head1_s400_config[22] =
+{
+	0x03,0x00,0x00,0x16,0x11,0xE0,0x00,0x00,0x00,0x01,
+	0x00,0xC0,0x01,0x0A,0xC1,0x02,0x01,0x00,0xC2,0x02,
+	0x01,0x03
+};
+
+static byte g_plc_head1_s1500_config[22] =
+{
+	0x03,0x00,0x00,0x16,0x11,0xE0,0x00,0x00,0x00,0x01,
+	0x00,0xC0,0x01,0x0A,0xC1,0x02,0x01,0x02,0xC2,0x02,
+	0x01,0x00
+};
+
+static byte g_plc_head1_s200smart_config[22] =
+{
+	0x03,0x00,0x00,0x16,0x11,0xE0,0x00,0x00,0x00,0x01,
+	0x00,0xC1,0x02,0x10,0x00,0xC2,0x02,0x03,0x00,0xC0,
+	0x01,0x0A
+};
+
+static byte g_plc_head1_s200_config[22] =
+{
+	0x03,0x00,0x00,0x16,0x11,0xE0,0x00,0x00,0x00,0x01,
+	0x00,0xC1,0x02,0x4D,0x57,0xC2,0x02,0x4D,0x57,0xC0,
+	0x01,0x09
+};
+
+static const byte g_plc_head2_default[25] =
+{
+	0x03,0x00,0x00,0x19,0x02,0xF0,0x80,0x32,0x01,0x00,
+	0x00,0x04,0x00,0x00,0x08,0x00,0x00,0xF0,0x00,0x00,
+	0x01,0x00,0x01,0x01,0xE0
+};
+
+static byte* s7_get_head1_config_for_plc(siemens_plc_types_e plc)
+{
+	switch (plc)
+	{
+	case S300:
+		return g_plc_head1_s300_config;
+	case S400:
+		return g_plc_head1_s400_config;
+	case S1500:
+		return g_plc_head1_s1500_config;
+	case S200Smart:
+		return g_plc_head1_s200smart_config;
+	case S200:
+		return g_plc_head1_s200_config;
+	case S1200:
+	default:
+		return g_plc_head1_s1200_config;
+	}
+}
+
+static void s7_load_connection_headers(siemens_plc_types_e plc)
+{
+	byte* configured_head1 = s7_get_head1_config_for_plc(plc);
+
+	memcpy(g_plc_head1, configured_head1, sizeof(g_plc_head1));
 
 	switch (plc)
 	{
-	case S1200:
-		g_plc_head1[21] = 0;
-		break;
-
-	case S300:
-		g_plc_head1[21] = 2;
-		break;
-
-	case S400:
-		g_plc_head1[21] = 3;
-		g_plc_head1[17] = 0x00;
-		break;
-
-	case S1500:
-		g_plc_head1[21] = 0;
-		break;
-
 	case S200Smart:
-		memcpy(g_plc_head1, g_plc_head1_200smart, sizeof(g_plc_head1));
 		memcpy(g_plc_head2, g_plc_head2_200smart, sizeof(g_plc_head2));
 		break;
-
 	case S200:
-		memcpy(g_plc_head1, g_plc_head1_200, sizeof(g_plc_head1));
 		memcpy(g_plc_head2, g_plc_head2_200, sizeof(g_plc_head2));
 		break;
-
+	case S1200:
+	case S300:
+	case S400:
+	case S1500:
 	default:
-		g_plc_head1[18] = 0;
+		memcpy(g_plc_head2, g_plc_head2_default, sizeof(g_plc_head2));
 		break;
 	}
+}
+
+static void s7_update_head1_byte_for_active_plc(int index, byte value)
+{
+	if (current_plc == S200 || current_plc == S200Smart)
+	{
+		byte* configured_head1 = s7_get_head1_config_for_plc(current_plc);
+		configured_head1[index] = value;
+	}
+	else
+	{
+		g_plc_head1_s1200_config[index] = value;
+		g_plc_head1_s300_config[index] = value;
+		g_plc_head1_s400_config[index] = value;
+		g_plc_head1_s1500_config[index] = value;
+	}
+
+	g_plc_head1[index] = value;
+}
+
+static void s7_copy_ip_address(const char* ip)
+{
+	size_t copy_length = 0;
+
+	ip_address[0] = '\0';
+	if (ip == NULL)
+		return;
+
+	copy_length = strlen(ip);
+	if (copy_length >= sizeof(ip_address))
+		copy_length = sizeof(ip_address) - 1;
+
+	memcpy(ip_address, ip, copy_length);
+	ip_address[copy_length] = '\0';
+}
+
+static s7_pdu_registry_node* s7_find_pdu_registry_node(int fd)
+{
+	s7_pdu_registry_node* current = g_s7_pdu_registry;
+	while (current != NULL)
+	{
+		if (current->fd == fd)
+			return current;
+		current = current->next;
+	}
+
+	return NULL;
+}
+
+static bool s7_store_pdu_length_for_fd(int fd, int pdu_length)
+{
+	s7_pdu_registry_node* node = NULL;
+
+	if (fd < 0)
+		return false;
+
+	node = s7_find_pdu_registry_node(fd);
+	if (node == NULL)
+	{
+		node = (s7_pdu_registry_node*)malloc(sizeof(s7_pdu_registry_node));
+		if (node == NULL)
+			return false;
+
+		node->fd = fd;
+		node->next = g_s7_pdu_registry;
+		g_s7_pdu_registry = node;
+	}
+
+	node->pdu_length = pdu_length;
+	return true;
+}
+
+static void s7_remove_pdu_length_for_fd(int fd)
+{
+	s7_pdu_registry_node* current = g_s7_pdu_registry;
+	s7_pdu_registry_node* previous = NULL;
+
+	while (current != NULL)
+	{
+		if (current->fd == fd)
+		{
+			if (previous == NULL)
+				g_s7_pdu_registry = current->next;
+			else
+				previous->next = current->next;
+
+			free(current);
+			return;
+		}
+
+		previous = current;
+		current = current->next;
+	}
+}
+
+void s7_initialization(siemens_plc_types_e plc, char* ip)
+{
+	word_length = 2;
+	s7_copy_ip_address(ip);
+	current_plc = plc;
+	s7_load_connection_headers(plc);
 }
 
 bool s7_connect(char* ip_addr, int port, siemens_plc_types_e plc, int* fd)
 {
 	bool ret = false;
 	int temp_fd = -1;
+
+	if (fd == NULL)
+		return false;
+
+	*fd = -1;
+	if (ip_addr == NULL || ip_addr[0] == '\0' || port <= 0 || port > 65535)
+		return false;
+
 	temp_fd = socket_open_tcp_client_socket(ip_addr, port);
 	s7_initialization(plc, ip_addr);
 	*fd = temp_fd;
@@ -84,6 +253,7 @@ bool s7_connect(char* ip_addr, int port, siemens_plc_types_e plc, int* fd)
 
 	if (!ret && temp_fd >= 0)
 	{
+		s7_remove_pdu_length_for_fd(temp_fd);
 		socket_close_tcp_socket(temp_fd);
 		*fd = -1;
 	}
@@ -92,6 +262,7 @@ bool s7_connect(char* ip_addr, int port, siemens_plc_types_e plc, int* fd)
 
 bool s7_disconnect(int fd)
 {
+	s7_remove_pdu_length_for_fd(fd);
 	socket_close_tcp_socket(fd);
 	return true;
 }
@@ -456,6 +627,10 @@ bool initialization_on_connect(int fd)
 	// Update the negotiated PDU length for single receive operations.
 	g_pdu_length = ntohs(bytes2ushort(ret.data + ret.length - 2)) - 28;
 	if (g_pdu_length < 200) g_pdu_length = 200;
+	if (!s7_store_pdu_length_for_fd(fd, g_pdu_length)) {
+		if (NULL != ret.data) free(ret.data);
+		return false;
+	}
 
 	if (NULL != ret.data) free(ret.data);
 
@@ -858,7 +1033,7 @@ void set_plc_slot(byte slot)
 {
 	g_plc_slot = slot;
 	if (current_plc != S200 && current_plc != S200Smart)
-		g_plc_head1[21] = (byte)((g_plc_rack * 0x20) + g_plc_slot);
+		s7_update_head1_byte_for_active_plc(21, (byte)((g_plc_rack * 0x20) + g_plc_slot));
 }
 
 byte get_plc_rack()
@@ -870,7 +1045,7 @@ void set_plc_rack(byte rack)
 {
 	g_plc_rack = rack;
 	if (current_plc != S200 && current_plc != S200Smart)
-		g_plc_head1[21] = (byte)((g_plc_rack * 0x20) + g_plc_slot);
+		s7_update_head1_byte_for_active_plc(21, (byte)((g_plc_rack * 0x20) + g_plc_slot));
 }
 
 byte get_plc_connection_type()
@@ -881,7 +1056,7 @@ byte get_plc_connection_type()
 void set_plc_connection_type(byte type)
 {
 	if (current_plc != S200 && current_plc != S200Smart)
-		g_plc_head1[20] = type;
+		s7_update_head1_byte_for_active_plc(20, type);
 }
 
 int get_plc_local_TSAP()
@@ -899,13 +1074,13 @@ void set_plc_local_TSAP(int tasp)
 
 	if (current_plc == S200 || current_plc == S200Smart)
 	{
-		g_plc_head1[13] = temp[1];
-		g_plc_head1[14] = temp[0];
+		s7_update_head1_byte_for_active_plc(13, temp[1]);
+		s7_update_head1_byte_for_active_plc(14, temp[0]);
 	}
 	else
 	{
-		g_plc_head1[16] = temp[1];
-		g_plc_head1[17] = temp[0];
+		s7_update_head1_byte_for_active_plc(16, temp[1]);
+		s7_update_head1_byte_for_active_plc(17, temp[0]);
 	}
 }
 
@@ -924,17 +1099,26 @@ void set_plc_dest_TSAP(int tasp)
 
 	if (current_plc == S200 || current_plc == S200Smart)
 	{
-		g_plc_head1[17] = temp[1];
-		g_plc_head1[18] = temp[0];
+		s7_update_head1_byte_for_active_plc(17, temp[1]);
+		s7_update_head1_byte_for_active_plc(18, temp[0]);
 	}
 	else
 	{
-		g_plc_head1[20] = temp[1];
-		g_plc_head1[21] = temp[0];
+		s7_update_head1_byte_for_active_plc(20, temp[1]);
+		s7_update_head1_byte_for_active_plc(21, temp[0]);
 	}
 }
 
 int get_plc_PDU_length()
 {
 	return g_pdu_length;
+}
+
+int s7_get_pdu_length(int fd)
+{
+	s7_pdu_registry_node* node = s7_find_pdu_registry_node(fd);
+	if (node == NULL)
+		return 0;
+
+	return node->pdu_length;
 }

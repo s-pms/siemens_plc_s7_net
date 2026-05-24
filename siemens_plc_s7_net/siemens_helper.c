@@ -13,6 +13,14 @@
 
 #define BUFFER_SIZE 1024
 
+static bool s7_range_fits(int offset, int size, int total_length) {
+	return offset >= 0 && size >= 0 && offset <= total_length && size <= total_length - offset;
+}
+
+static bool s7_can_append_bytes(int buffer_length, int append_length, int capacity) {
+	return buffer_length >= 0 && append_length >= 0 && buffer_length <= capacity && append_length <= capacity - buffer_length;
+}
+
 // Extract common command header building logic
 static void build_command_header(byte* command, ushort command_len, byte command_type) {
 	command[0] = 0x03;
@@ -260,6 +268,11 @@ s7_error_code_e s7_analysis_read_bit(byte_array_info response, byte_array_info* 
 	s7_error_code_e ret_code = S7_ERROR_CODE_SUCCESS;
 	if (response.length == 0)
 		return S7_ERROR_CODE_FAILED;
+	if (ret == NULL)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
+
+	ret->data = NULL;
+	ret->length = 0;
 
 	if (response.length >= MIN_HEADER_SIZE && response.data[20] == 1)
 	{
@@ -268,6 +281,10 @@ s7_error_code_e s7_analysis_read_bit(byte_array_info response, byte_array_info* 
 		{
 			if (response.data[21] == 0xFF && response.data[22] == 0x03)
 			{
+				if (!s7_range_fits(25, 1, response.length))
+				{
+					return S7_ERROR_CODE_RESPONSE_HEADER_FAILED;
+				}
 				buffer[0] = response.data[25];
 			}
 			else if (response.data[21] == 0x05 && response.data[22] == 0x00)
@@ -310,18 +327,45 @@ s7_error_code_e s7_analysis_read_byte(byte_array_info response, byte_array_info*
 	s7_error_code_e ret_code = S7_ERROR_CODE_SUCCESS;
 	if (response.length == 0)
 		return S7_ERROR_CODE_FAILED;
+	if (ret == NULL)
+		return S7_ERROR_CODE_INVALID_PARAMETER;
+
+	ret->data = NULL;
+	ret->length = 0;
 
 	int i = 0, j = 0;
-	byte buffer[1024] = { 0 };
+	byte* buffer = NULL;
 	int buffer_length = 0;
 	int temp_index = 0;
 	if (response.length >= MIN_HEADER_SIZE)
 	{
+		buffer = (byte*)malloc(response.length);
+		if (buffer == NULL)
+		{
+			return S7_ERROR_CODE_MALLOC_FAILED;
+		}
+		memset(buffer, 0, response.length);
+
 		for (i = 21; i < response.length - 1; i++)
 		{
 			if (response.data[i] == 0xFF && response.data[i + 1] == 0x04)
 			{
-				int count = (response.data[i + 2] * 256 + response.data[i + 3]) / 8;
+				if (!s7_range_fits(i + 2, 2, response.length))
+				{
+					ret_code = S7_ERROR_CODE_RESPONSE_HEADER_FAILED;
+					break;
+				}
+
+				int bit_count = response.data[i + 2] * 256 + response.data[i + 3];
+				int count = bit_count / 8;
+				if ((bit_count % 8) != 0 ||
+					!s7_range_fits(i + 4, count, response.length) ||
+					!s7_can_append_bytes(buffer_length, count, response.length))
+				{
+					ret_code = S7_ERROR_CODE_RESPONSE_HEADER_FAILED;
+					break;
+				}
+
 				memcpy(buffer + buffer_length, response.data + i + 4, count);
 				buffer_length += count;
 
@@ -329,24 +373,51 @@ s7_error_code_e s7_analysis_read_byte(byte_array_info response, byte_array_info*
 			}
 			else if (response.data[i] == 0xFF && response.data[i + 1] == 0x09)
 			{
+				if (!s7_range_fits(i + 2, 2, response.length))
+				{
+					ret_code = S7_ERROR_CODE_RESPONSE_HEADER_FAILED;
+					break;
+				}
+
 				int count = response.data[i + 2] * 256 + response.data[i + 3];
 				if (count % 3 == 0)
 				{
 					for (j = 0; j < count / 3; j++)
 					{
 						temp_index = i + 5 + 3 * j;
+						if (!s7_range_fits(temp_index, 2, response.length) ||
+							!s7_can_append_bytes(buffer_length, 2, response.length))
+						{
+							ret_code = S7_ERROR_CODE_RESPONSE_HEADER_FAILED;
+							break;
+						}
 						memcpy(buffer + buffer_length, (void*)(response.data + temp_index), 2);
 						buffer_length += 2;
 					}
+					if (ret_code != S7_ERROR_CODE_SUCCESS)
+						break;
 				}
-				else
+				else if (count % 5 == 0)
 				{
 					for (j = 0; j < count / 5; j++)
 					{
 						temp_index = i + 7 + 5 * j;
+						if (!s7_range_fits(temp_index, 2, response.length) ||
+							!s7_can_append_bytes(buffer_length, 2, response.length))
+						{
+							ret_code = S7_ERROR_CODE_RESPONSE_HEADER_FAILED;
+							break;
+						}
 						memcpy(buffer + buffer_length, (void*)(response.data + temp_index), 2);
 						buffer_length += 2;
 					}
+					if (ret_code != S7_ERROR_CODE_SUCCESS)
+						break;
+				}
+				else
+				{
+					ret_code = S7_ERROR_CODE_RESPONSE_HEADER_FAILED;
+					break;
 				}
 				i += count + 4;
 			}
@@ -358,14 +429,20 @@ s7_error_code_e s7_analysis_read_byte(byte_array_info response, byte_array_info*
 				ret_code = S7_ERROR_CODE_ERROR_000A;
 		}
 
-		ret->data = (byte*)malloc(buffer_length);
-		if (ret->data == NULL)
+		if (ret_code != S7_ERROR_CODE_SUCCESS)
 		{
-			return S7_ERROR_CODE_MALLOC_FAILED;
+			RELEASE_DATA(buffer);
+			return ret_code;
 		}
-		memset(ret->data, 0, buffer_length);
-		memcpy(ret->data, buffer, buffer_length);
-		ret->length = buffer_length;
+
+		if (buffer_length > 0)
+		{
+			ret->data = buffer;
+			ret->length = buffer_length;
+			buffer = NULL;
+		}
+
+		RELEASE_DATA(buffer);
 	}
 	else
 	{
