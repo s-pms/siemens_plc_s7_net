@@ -1,10 +1,12 @@
 # Overall Program Introduction
 
+[中文 README](README.md)
+
 ## Copyright And Contact
 
 - License: MIT License
 - GitHub: iceman
-- Email: wqliceman@gmail.com
+- Email: [wqliceman@gmail.com](mailto:wqliceman@gmail.com)
 
 - Project Name: siemens_plc_s7_net
 - Development Language: C
@@ -44,6 +46,82 @@ wsl.exe bash -lc 'cd /mnt/e/GitHub/siemens_plc_s7_net && make clean && make && m
 
 Note: top-level `make` builds the main target only. Tests are triggered explicitly via `make tests` to avoid artifact collisions.
 
+## Architecture Overview
+
+The codebase is easiest to understand as a chain of responsibilities: public API -> address parsing -> packet build/parse -> socket transport. For first-time readers, this is a better entry point than starting from the full API list.
+
+```mermaid
+flowchart LR
+   APP[Application / main.c] --> API[siemens_s7.h / siemens_s7.c<br/>Public API<br/>connection, handshake, PDU registry]
+   API --> ADDR[siemens_s7_comm.c<br/>Address parsing<br/>for MX100, DB1.DBX0.1, etc.]
+   API --> HELPER[siemens_helper.c<br/>S7 packet building<br/>and response parsing]
+   API --> SOCK[socket.c<br/>TCP connect timeout<br/>send and receive]
+   TEST[tests/test_minimal_regression.c<br/>Minimal regression tests] --> API
+   TEST --> ADDR
+```
+
+## Connection And Read/Write Flow
+
+The main behavior of this library is not a single API call, but the full chain of handshake, address parsing, packet exchange, and response validation. The sequence below provides the shortest useful mental model.
+
+```mermaid
+sequenceDiagram
+   participant App as Caller
+   participant S7 as s7 API
+   participant Addr as Address parser
+   participant Helper as Packet builder/parser
+   participant PLC as PLC
+
+   App->>S7: s7_connect(ip, port, plc, &fd)
+   S7->>PLC: TCP connect with timeout
+   PLC-->>S7: connection established
+   S7->>PLC: Handshake packet 1
+   PLC-->>S7: Handshake response 1
+   S7->>PLC: Handshake packet 2
+   PLC-->>S7: Handshake response 2 (negotiated PDU length)
+   S7->>S7: store PDU length by fd
+
+   App->>S7: s7_read_xxx / s7_write_xxx
+   S7->>Addr: s7_analysis_address(address)
+   Addr-->>S7: data_code / db_block / offset / length
+   S7->>Helper: build read/write request
+   Helper-->>S7: TPKT + COTP + S7 request
+   S7->>PLC: send request
+   PLC-->>S7: response packet
+   S7->>S7: validate TPKT/COTP/S7 headers
+   S7->>Helper: parse response data / status
+   Helper-->>App: value or error code
+```
+
+### Detailed PDU Negotiation Flow
+
+The most important handshake detail happens during the second negotiation step: the library loads different handshake templates per PLC family, extracts the negotiated PDU length from the response tail, and updates both the legacy global value and the connection-scoped registry.
+
+```mermaid
+sequenceDiagram
+   participant App as Caller
+   participant S7 as s7_connect / initialization_on_connect
+   participant PLC as PLC
+   participant Registry as PDU registry
+
+   App->>S7: s7_connect(ip, port, plc, &fd)
+   S7->>S7: s7_initialization(plc, ip)
+   Note over S7: Load handshake templates by PLC family\nstandard S7 differs from S200/S200Smart
+   S7->>PLC: Send handshake packet 1 (g_plc_head1)
+   PLC-->>S7: Handshake response 1
+   S7->>PLC: Send handshake packet 2 (g_plc_head2)
+   PLC-->>S7: Handshake response 2
+   S7->>S7: Read negotiated value from last 2 bytes
+   S7->>S7: g_pdu_length = ntohs(tail) - 28
+   alt negotiated value < 200
+      S7->>S7: clamp to minimum PDU 200
+   end
+   S7->>Registry: s7_store_pdu_length_for_fd(fd, g_pdu_length)
+   Registry-->>S7: persist connection-scoped PDU length
+   S7-->>App: return success
+   Note over App,Registry: get_plc_PDU_length() returns the latest global value\ns7_get_pdu_length(fd) returns the connection-scoped value
+```
+
 ## Header Files
 
 ```c
@@ -62,17 +140,40 @@ Note: top-level `make` builds the main target only. Tests are triggered explicit
 
 Code values for types (soft element codes used to distinguish soft element types, e.g., D, R)
 
-| Serial No.  | Description         | Address Type |
-| :---: | :------------- | -------- |
-|   1   | Intermediate relay        | M        |
-|   2   | Input relay               | I        |
-|   3   | Output relay (Q)          | Q        |
-|   4   | DB block register (DB)    | DB       |
-|   5   | V register                | V        |
-|   6   | Timer value               | T        |
-|   7   | Counter value             | C        |
-|   8   | Intelligent input relay   | AI       |
-|   9   | Intelligent output relay  | AQ       |
+| Serial No. | Description               | Address Type |
+| :--------: | :------------------------ | :----------: |
+| 1          | Intermediate relay        | M            |
+| 2          | Input relay               | I            |
+| 3          | Output relay (Q)          | Q            |
+| 4          | DB block register (DB)    | DB           |
+| 5          | V register                | V            |
+| 6          | Timer value               | T            |
+| 7          | Counter value             | C            |
+| 8          | Intelligent input relay   | AI           |
+| 9          | Intelligent output relay  | AQ           |
+
+### Address Parsing Flow
+
+An address string is first classified by prefix, then resolved according to whether it is a DB address, a bit address, or a timer/counter address.
+
+```mermaid
+flowchart TD
+   A[Input address string<br/>for example MX100 / DB1.DBX0.1 / T100] --> B[Normalize to uppercase<br/>and detect prefix]
+   B --> C{Supported prefix}
+   C -- No --> X[Return parse failure]
+   C -- Yes --> D{DB address}
+   D -- Yes --> E[Parse DB block number<br/>optional suffix DBX/DBB/DBW/DBD]
+   E --> F[Compute offset]
+   D -- No --> G{Timer or counter}
+   G -- Yes --> H[Compute offset as word address]
+   G -- No --> I{Bit address<br/>such as MX0.1}
+   I -- Yes --> J[Validate bit range 0 to 7<br/>offset = byte * 8 + bit]
+   I -- No --> K[Compute byte offset<br/>offset = byte * 8]
+   F --> L[Output data_code / db_block / offset / length]
+   H --> L
+   J --> L
+   K --> L
+```
 
 ## Implemented Methods
 

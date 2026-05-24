@@ -1,12 +1,12 @@
-[English README](README_EN.md)
-
 # 程序整体介绍
+
+[English README](README_EN.md)
 
 ## 版权与作者信息
 
 - 开源协议：MIT License
 - GitHub：iceman
-- 邮箱：wqliceman@gmail.com
+- 邮箱：[wqliceman@gmail.com](mailto:wqliceman@gmail.com)
 
 - 项目名称：siemens_plc_s7_net
 - 开发语言：C语言
@@ -47,6 +47,82 @@ wsl.exe bash -lc 'cd /mnt/e/GitHub/siemens_plc_s7_net && make clean && make && m
 
 说明：顶层 `make` 默认只构建主程序；测试通过 `make tests` 显式触发，避免构建产物冲突。
 
+## 架构概览
+
+当前代码可以按“公开接口 -> 地址解析 -> 报文构造/解析 -> Socket 传输”来理解。首次接入时，先看这几个模块的职责边界，比直接阅读全部 API 原型更高效。
+
+```mermaid
+flowchart LR
+   APP[业务程序 / main.c] --> API[siemens_s7.h / siemens_s7.c<br/>公开 API<br/>连接管理、握手、PDU 记录]
+   API --> ADDR[siemens_s7_comm.c<br/>地址解析<br/>如 MX100、DB1.DBX0.1]
+   API --> HELPER[siemens_helper.c<br/>S7 报文构造与响应解析]
+   API --> SOCK[socket.c<br/>TCP 连接超时<br/>发送与接收]
+   TEST[tests/test_minimal_regression.c<br/>最小回归测试] --> API
+   TEST --> ADDR
+```
+
+## 连接与读写流程
+
+库的核心路径不是单个 API，而是“连接握手 + 地址解析 + 报文收发 + 响应校验”这一整条链路。下面这张图用于快速建立调用心智模型。
+
+```mermaid
+sequenceDiagram
+   participant App as 调用方
+   participant S7 as s7 API
+   participant Addr as 地址解析
+   participant Helper as 报文构造/解析
+   participant PLC as PLC
+
+   App->>S7: s7_connect(ip, port, plc, &fd)
+   S7->>PLC: TCP connect（超时控制）
+   PLC-->>S7: 连接建立
+   S7->>PLC: 握手报文 1
+   PLC-->>S7: 握手响应 1
+   S7->>PLC: 握手报文 2
+   PLC-->>S7: 握手响应 2（协商 PDU 长度）
+   S7->>S7: 按 fd 保存 PDU 长度
+
+   App->>S7: s7_read_xxx / s7_write_xxx
+   S7->>Addr: s7_analysis_address(address)
+   Addr-->>S7: data_code / db_block / offset / length
+   S7->>Helper: 构造读/写请求报文
+   Helper-->>S7: TPKT + COTP + S7 请求
+   S7->>PLC: 发送请求
+   PLC-->>S7: 返回响应
+   S7->>S7: 校验 TPKT/COTP/S7 头
+   S7->>Helper: 解析响应数据/结果码
+   Helper-->>App: 返回值或错误码
+```
+
+### PDU 协商细化流程
+
+连接阶段真正需要注意的细节在第二次握手：库会按 PLC 家族加载不同握手模板，从返回报文尾部提取协商后的 PDU 长度，并同时更新兼容的全局值与按连接保存的映射。
+
+```mermaid
+sequenceDiagram
+   participant App as 调用方
+   participant S7 as s7_connect / initialization_on_connect
+   participant PLC as PLC
+   participant Registry as PDU 记录表
+
+   App->>S7: s7_connect(ip, port, plc, &fd)
+   S7->>S7: s7_initialization(plc, ip)
+   Note over S7: 按 PLC 型号装载握手模板\n标准 S7 与 S200/S200Smart 不同
+   S7->>PLC: 发送握手报文 1（g_plc_head1）
+   PLC-->>S7: 返回握手响应 1
+   S7->>PLC: 发送握手报文 2（g_plc_head2）
+   PLC-->>S7: 返回握手响应 2
+   S7->>S7: 从响应末尾 2 字节读取协商值
+   S7->>S7: g_pdu_length = ntohs(tail) - 28
+   alt 协商值小于 200
+      S7->>S7: 强制提升到最小 PDU 200
+   end
+   S7->>Registry: s7_store_pdu_length_for_fd(fd, g_pdu_length)
+   Registry-->>S7: 保存按连接的 PDU 长度
+   S7-->>App: 返回连接成功
+   Note over App,Registry: get_plc_PDU_length() 返回最近一次全局值\ns7_get_pdu_length(fd) 返回按连接记录的值
+```
+
 ## 头文件
 
 ```c
@@ -65,17 +141,40 @@ wsl.exe bash -lc 'cd /mnt/e/GitHub/siemens_plc_s7_net && make clean && make && m
 
 类型的代号值（软元件代码，用于区分软元件类型，如：D，R）
 
-| 序号  | 描述           | 地址类型 |
-| :---: | :------------- | -------- |
-|   1   | 中间继电器     | M        |
-|   2   | 输入继电器     | I        |
-|   3   | 输出继电器Q    | Q        |
-|   4   | DB块寄存器DB   | DB       |
-|   5   | V寄存器        | V        |
-|   6   | 定时器的值     | T        |
-|   7   | 计数器的值     | C        |
-|   8   | 智能输入寄存器 | AI       |
-|   9   | 智能输出寄存器 | AQ       |
+| 序号 | 描述           | 地址类型 |
+| :--: | :------------- | :------: |
+| 1    | 中间继电器     | M        |
+| 2    | 输入继电器     | I        |
+| 3    | 输出继电器 Q   | Q        |
+| 4    | DB 块寄存器 DB | DB       |
+| 5    | V 寄存器       | V        |
+| 6    | 定时器的值     | T        |
+| 7    | 计数器的值     | C        |
+| 8    | 智能输入寄存器 | AI       |
+| 9    | 智能输出寄存器 | AQ       |
+
+### 地址解析流程
+
+地址字符串会先按前缀分类，再根据是否为 DB 地址、位地址或定时器/计数器地址，计算最终的访问偏移。
+
+```mermaid
+flowchart TD
+   A[输入地址字符串<br/>例如 MX100 / DB1.DBX0.1 / T100] --> B[转换为大写并识别前缀]
+   B --> C{是否匹配支持的前缀}
+   C -- 否 --> X[返回解析失败]
+   C -- 是 --> D{是否为 DB 地址}
+   D -- 是 --> E[解析 DB 块号<br/>可选后缀 DBX/DBB/DBW/DBD]
+   E --> F[计算偏移地址]
+   D -- 否 --> G{是否为 T/C 地址}
+   G -- 是 --> H[按字地址直接计算偏移]
+   G -- 否 --> I{是否为位地址<br/>如 MX0.1}
+   I -- 是 --> J[校验 bit 范围 0 到 7<br/>偏移 = byte * 8 + bit]
+   I -- 否 --> K[按字节地址计算偏移<br/>偏移 = byte * 8]
+   F --> L[输出 data_code / db_block / offset / length]
+   H --> L
+   J --> L
+   K --> L
+```
 
 ## 实现方法
 
