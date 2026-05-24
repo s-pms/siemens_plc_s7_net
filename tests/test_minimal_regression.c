@@ -375,6 +375,48 @@ static void test_initialization_preserves_standard_configuration(void) {
 	set_plc_dest_TSAP(0x0100);
 }
 
+static void test_initialization_preserves_s200smart_configuration(void) {
+	char ip[] = "127.0.0.1";
+
+	s7_initialization(S1200, ip);
+	set_plc_local_TSAP(0x5678);
+	set_plc_dest_TSAP(0x1234);
+
+	s7_initialization(S200Smart, ip);
+
+	EXPECT_TRUE("init: S200Smart local TSAP preserved before first connect", get_plc_local_TSAP() == 0x5678);
+	EXPECT_TRUE("init: S200Smart dest TSAP preserved before first connect", get_plc_dest_TSAP() == 0x1234);
+
+	set_plc_local_TSAP(0x0102);
+	set_plc_dest_TSAP(0x0300);
+	set_plc_connection_type(0x01);
+	set_plc_rack(0x00);
+	set_plc_slot(0x00);
+	s7_initialization(S1200, ip);
+}
+
+static void test_standard_configuration_updates_after_s200smart_context(void) {
+	char ip[] = "127.0.0.1";
+
+	s7_initialization(S200Smart, ip);
+	set_plc_connection_type(0x03);
+	set_plc_rack(0x01);
+	set_plc_slot(0x02);
+	set_plc_local_TSAP(0x1234);
+
+	s7_initialization(S1200, ip);
+
+	EXPECT_TRUE("init: standard connection type can be configured after S200Smart", get_plc_connection_type() == 0x03);
+	EXPECT_TRUE("init: standard local TSAP can be configured after S200Smart", get_plc_local_TSAP() == 0x1234);
+	EXPECT_TRUE("init: standard dest TSAP can be configured after S200Smart", get_plc_dest_TSAP() == 0x0322);
+
+	set_plc_connection_type(0x01);
+	set_plc_rack(0x00);
+	set_plc_slot(0x00);
+	set_plc_local_TSAP(0x0102);
+	set_plc_dest_TSAP(0x0100);
+}
+
 static void test_connection_scoped_pdu_length(void) {
 #ifdef _WIN32
 	EXPECT_TRUE("pdu: connection scoped test skipped on Windows", true);
@@ -431,6 +473,8 @@ int main(void) {
 	test_initialization_resets_standard_headers();
 	test_connect_parameter_guard();
 	test_initialization_preserves_standard_configuration();
+	test_initialization_preserves_s200smart_configuration();
+	test_standard_configuration_updates_after_s200smart_context();
 	test_connection_scoped_pdu_length();
 	test_remote_run_stop_packet_path();
 

@@ -131,22 +131,29 @@ static void s7_load_connection_headers(siemens_plc_types_e plc)
 	}
 }
 
-static void s7_update_head1_byte_for_active_plc(int index, byte value)
+static bool s7_current_plc_is_s200_family(void)
 {
-	if (current_plc == S200 || current_plc == S200Smart)
-	{
-		byte* configured_head1 = s7_get_head1_config_for_plc(current_plc);
-		configured_head1[index] = value;
-	}
-	else
-	{
-		g_plc_head1_s1200_config[index] = value;
-		g_plc_head1_s300_config[index] = value;
-		g_plc_head1_s400_config[index] = value;
-		g_plc_head1_s1500_config[index] = value;
-	}
+	return current_plc == S200 || current_plc == S200Smart;
+}
 
-	g_plc_head1[index] = value;
+static void s7_update_standard_head1_byte(int index, byte value)
+{
+	g_plc_head1_s1200_config[index] = value;
+	g_plc_head1_s300_config[index] = value;
+	g_plc_head1_s400_config[index] = value;
+	g_plc_head1_s1500_config[index] = value;
+
+	if (!s7_current_plc_is_s200_family())
+		g_plc_head1[index] = value;
+}
+
+static void s7_update_s200_family_head1_byte(int index, byte value)
+{
+	g_plc_head1_s200_config[index] = value;
+	g_plc_head1_s200smart_config[index] = value;
+
+	if (s7_current_plc_is_s200_family())
+		g_plc_head1[index] = value;
 }
 
 static void s7_copy_ip_address(const char* ip)
@@ -1032,8 +1039,7 @@ byte get_plc_slot()
 void set_plc_slot(byte slot)
 {
 	g_plc_slot = slot;
-	if (current_plc != S200 && current_plc != S200Smart)
-		s7_update_head1_byte_for_active_plc(21, (byte)((g_plc_rack * 0x20) + g_plc_slot));
+	s7_update_standard_head1_byte(21, (byte)((g_plc_rack * 0x20) + g_plc_slot));
 }
 
 byte get_plc_rack()
@@ -1044,8 +1050,7 @@ byte get_plc_rack()
 void set_plc_rack(byte rack)
 {
 	g_plc_rack = rack;
-	if (current_plc != S200 && current_plc != S200Smart)
-		s7_update_head1_byte_for_active_plc(21, (byte)((g_plc_rack * 0x20) + g_plc_slot));
+	s7_update_standard_head1_byte(21, (byte)((g_plc_rack * 0x20) + g_plc_slot));
 }
 
 byte get_plc_connection_type()
@@ -1055,8 +1060,7 @@ byte get_plc_connection_type()
 
 void set_plc_connection_type(byte type)
 {
-	if (current_plc != S200 && current_plc != S200Smart)
-		s7_update_head1_byte_for_active_plc(20, type);
+	s7_update_standard_head1_byte(20, type);
 }
 
 int get_plc_local_TSAP()
@@ -1072,16 +1076,10 @@ void set_plc_local_TSAP(int tasp)
 	byte temp[4] = { 0 };
 	int2bytes(tasp, temp);
 
-	if (current_plc == S200 || current_plc == S200Smart)
-	{
-		s7_update_head1_byte_for_active_plc(13, temp[1]);
-		s7_update_head1_byte_for_active_plc(14, temp[0]);
-	}
-	else
-	{
-		s7_update_head1_byte_for_active_plc(16, temp[1]);
-		s7_update_head1_byte_for_active_plc(17, temp[0]);
-	}
+	s7_update_standard_head1_byte(16, temp[1]);
+	s7_update_standard_head1_byte(17, temp[0]);
+	s7_update_s200_family_head1_byte(13, temp[1]);
+	s7_update_s200_family_head1_byte(14, temp[0]);
 }
 
 int get_plc_dest_TSAP()
@@ -1097,16 +1095,10 @@ void set_plc_dest_TSAP(int tasp)
 	byte temp[4] = { 0 };
 	int2bytes(tasp, temp);
 
-	if (current_plc == S200 || current_plc == S200Smart)
-	{
-		s7_update_head1_byte_for_active_plc(17, temp[1]);
-		s7_update_head1_byte_for_active_plc(18, temp[0]);
-	}
-	else
-	{
-		s7_update_head1_byte_for_active_plc(20, temp[1]);
-		s7_update_head1_byte_for_active_plc(21, temp[0]);
-	}
+	s7_update_standard_head1_byte(20, temp[1]);
+	s7_update_standard_head1_byte(21, temp[0]);
+	s7_update_s200_family_head1_byte(17, temp[1]);
+	s7_update_s200_family_head1_byte(18, temp[0]);
 }
 
 int get_plc_PDU_length()
